@@ -10,8 +10,9 @@ var Engine = Matter.Engine,
     Body = Matter.Body,
     Mouse = Matter.Mouse,
     Common = Matter.Common,
-    Bodies = Matter.Bodies;
+    Bodies = Matter.Bodies,
     Bounds = Matter.Bounds;
+    MouseConstraint = Matter.MouseConstraint;
 
 // create engine
 var engine = Engine.create();
@@ -26,7 +27,10 @@ var render = Render.create({
     width: canvas.clientWidth,
     height: canvas.clientHeight,
     wireframes: false,
-    hasBounds: true
+    hasBounds: true,
+    background: "#333333",
+
+    showPerformance: true
   }
 });
 
@@ -61,9 +65,9 @@ world.gravity.scale = 0;
 
 // create a body with an attractor
 var attractiveBody = Bodies.circle(
-  render.options.width / 2,
-  render.options.height / 2,
-  50, 
+  render.options.width * 0.5,
+  render.options.height * 0.8,
+  150, 
   {
   isStatic: true,
 
@@ -83,32 +87,40 @@ var attractiveBody = Bodies.circle(
 
 World.add(world, attractiveBody);
 
-// add some bodies that to be attracted
-for (var i = 0; i < 150; i += 1) {
-  var body = Bodies.polygon(
-    Common.random(0, render.options.width), 
-    Common.random(0, render.options.height),
-    Common.random(1, 5),
-    Common.random() > 0.9 ? Common.random(15, 25) : Common.random(5, 10)
-  );
-
-  World.add(world, body);
-}
-
 // add mouse control
 var mouse = Mouse.create(render.canvas);
+/*var mouseConstraint = MouseConstraint.create(engine, {
+  element: canvas,
+  mouse: mouse
+});*/
 
+var mouseDown = false;
 Events.on(engine, 'afterUpdate', function() {
-    /*if (!mouse.position.x) {
+    if (!mouse.position.x) {
       return;
     }
 
-    // smoothly move the attractor body towards the mouse
-    Body.translate(attractiveBody, {
-        x: (mouse.position.x - attractiveBody.position.x) * 0.25,
-        y: (mouse.position.y - attractiveBody.position.y) * 0.25
-    });*/
+    if (mouse.button == 0 && !mouseDown) {
+      mouseDown = true;
+      CreateRandomBody(mouse.position.x, mouse.position.y);
+    } else if (mouse.button == -1 && mouseDown) {
+      mouseDown = false;
+    }
 });
+
+function CreateRandomBody(x, y) {
+  console.log("Adding body");
+  var body = Bodies.rectangle(
+    x, //Common.random(0, render.options.width), 
+    y, //Common.random(0, render.options.height),
+    40,
+    40
+  );
+
+  body.render.fillStyle = "#dddddd"
+
+  World.add(world, body);
+}
 
 function run() {
   window.requestAnimationFrame(run);
@@ -116,3 +128,5 @@ function run() {
 };
 
 run();
+
+console.log("Todo: Shapes, rendering UI, checking if the entire build-a-tower-on-a-planet things holds up gameplay-wise. Look into Matterjs sensors, how to get position, point of mass, & distance of objects. How to make different shapes w/ parts and how to define preset types that can be clones at any time.")
