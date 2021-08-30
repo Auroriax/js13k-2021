@@ -1,3 +1,49 @@
+//SHAPES VERTEX POINTS
+/*shape_t = [
+  {x: 0, y: 0},
+  {x: 0, y: 25},
+  {x: 25, y: 25},
+  {x: 25, y: 50},
+  {x: 50, y: 50},
+  {x: 50, y: 25},
+  {x: 75, y: 25},
+  {x: 75, y: 0},
+]
+
+shape_l =  [
+  {x: 0, y: 0},
+  {x: 0, y: 100},
+  {x: 50, y: 100},
+  {x: 50, y: 33},
+  {x: 100, y: 33},
+  {x: 100, y: 0}
+]*/
+
+sBlock = [
+  {x: -25, y: -25},
+  {x: 25, y: -25},
+  {x: 25, y: 25},
+  {x: -25, y: 25},
+]
+
+sTrapezium = [
+  {x: 0, y: -25},
+  {x: 50, y: -25},
+  {x: 25, y: 25},
+  {x: -25, y: 25},
+  {x: -50, y: -25},
+]
+
+sParalellogram = [
+  {x: 0, y: -25},
+  {x: 25, y: -25},
+  {x: 50, y: 25},
+  {x: -25, y: 25},
+  {x: -50, y: -25},
+]
+
+shapes = [sBlock, sTrapezium, sParalellogram];
+
 //INIT
 Matter.use(
   'matter-attractors'
@@ -76,39 +122,55 @@ World.add(world, planet);
 
 var mouse = Mouse.create(render.canvas);
 
-function CreatePhantomBlock(x, y, ang) {
+blocks = [];
+hoverVertices = randomFromArray(shapes);
+hoverPreview = CreatePhantomBlock(planet.position.x,planet.position.y,0, hoverVertices);
+
+function CreatePhantomBlock(x, y, ang, vertices) {
   console.log("Adding phantom block");
-  var body = Bodies.rectangle(
+  /*var body = Bodies.rectangle(
     x,
     y,
     40,
     40
-  );
+  );*/
+
+  var body = Bodies.fromVertices(x,y,vertices);
 
   body.isSensor = true;
   body.isStatic = true;
   body.render.strokeStyle = "#dddddd";
   body.render.fillStyle = "#33333388";
-  body.render.lineWidth = 5; 
+  body.render.lineWidth = 5;
+
+  /*for (var i = 0; i != body.parts.length; i++) {
+    body.parts[i].isSensor = true;
+    body.parts[i].isStatic = true;
+    body.parts[i].render.strokeStyle = "#dddddd";
+    body.parts[i].render.fillStyle = "#33333388";
+    body.parts[i].render.lineWidth = 5;
+  }*/
 
   World.add(world, body);
 
   return body;
 }
 
-function ConvertToPhysicalBlock(x, y, ang) {
+function ConvertToPhysicalBlock(x, y, ang, vertexArray) {
   console.log("Adding actual block");
-  var body = Bodies.rectangle(
+  /*var body = Bodies.rectangle(
     x,
     y,
     40,
     40, 
-  );
+  );*/
+
+  var body = Bodies.fromVertices(x,y,vertexArray);
 
   Body.setAngle(body, ang);
 
-  //body.friction = 0.2;
-  //body.density = 0.005;
+  body.friction = 0.125;
+  body.density = 0.005;
 
   body.render.fillStyle = "#dddddd";
   body.render.strokeStyle = "#333333";
@@ -118,11 +180,10 @@ function ConvertToPhysicalBlock(x, y, ang) {
   World.add(world, body);
 }
 
-blocks = [];
-hoverPreview = CreatePhantomBlock(planet.position.x,planet.position.y,0);
+//UPDATE
 
 mouseDown = false;
-Events.on(engine, 'afterUpdate', function() {
+Events.on(engine, 'beforeUpdate', function() {
     if (!mouse.position.x) {
       return;
     }
@@ -130,24 +191,33 @@ Events.on(engine, 'afterUpdate', function() {
     if (hoverPreview) {
       Body.setPosition(hoverPreview, mouse.position);
       Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-        hoverPreview.position.x, hoverPreview.position.y));
+        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
     }
+
+    var colliding = false;
+
+    if (SAT.collides(hoverPreview, planet).collided) {
+      colliding = true
+    } else {
+      for (var i = 0; i != blocks.length; i++) {
+        if (SAT.collides(blocks[i], hoverPreview).collided) {
+          colliding = true; break;
+        }
+      }
+    }
+
+    hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
 
     if (mouse.button == 0 && !mouseDown) {
       mouseDown = true;
-      if (!SAT.collides(hoverPreview, planet).collided) {
 
-        var colliding = false;
-        for (var i = 0; i != blocks.length; i++) {
-          if (SAT.collides(blocks[i], hoverPreview).collided) {
-            colliding = true; break;
-          }
-        }
-
-        if (!colliding) {
-          ConvertToPhysicalBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle);
-          //hoverPreview = CreatePhantomBlock(mouse.position.x, mouse.position.y, 0);
-        }
+      if (!colliding) {
+        ConvertToPhysicalBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
+        World.remove(world, hoverPreview);
+        hoverVertices = randomFromArray(shapes);
+        hoverPreview = CreatePhantomBlock(mouse.position.x, mouse.position.y, 0, hoverVertices);
+        Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+          hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
       }
     } else if (mouse.button == -1 && mouseDown) {
       mouseDown = false;
@@ -189,7 +259,12 @@ function degreesToPoint(x1, y1, x2, y2) {
   return Math.atan2(y2 - y1, x2 - x1);
 }
 
+function randomFromArray(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+//TODO
 console.log("Todo:\n" 
 +"- Shapes, rendering UI, checking if the entire build-a-tower-on-a-planet things holds up gameplay-wise.\n"
-+"- How to make different shapes w/ parts and how to define preset types that can be clones at any time.\n"
++"- Make more shapes & next shape preview.\n"
 +"- After resizing some parts of the screen do not render show the hover shape (weird bounds?)")
