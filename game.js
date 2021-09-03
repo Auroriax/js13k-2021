@@ -1,63 +1,3 @@
-//SHAPES VERTEX POINTS
-/*shape_t = [
-  {x: 0, y: 0},
-  {x: 0, y: 25},
-  {x: 25, y: 25},
-  {x: 25, y: 50},
-  {x: 50, y: 50},
-  {x: 50, y: 25},
-  {x: 75, y: 25},
-  {x: 75, y: 0},
-]
-
-shape_l =  [
-  {x: 0, y: 0},
-  {x: 0, y: 100},
-  {x: 50, y: 100},
-  {x: 50, y: 33},
-  {x: 100, y: 33},
-  {x: 100, y: 0}
-]*/
-
-sBlock = [
-  {x: -25, y: -25},
-  {x: 25, y: -25},
-  {x: 25, y: 25},
-  {x: -25, y: 25},
-]
-
-sTrapezium = [
-  {x: 0, y: -25},
-  {x: 50, y: -25},
-  {x: 20, y: 25},
-  {x: -20, y: 25},
-  {x: -50, y: -25},
-]
-
-sParalellogram = [
-  {x: 0, y: -25},
-  {x: 20, y: -25},
-  {x: 50, y: 25},
-  {x: -20, y: 25},
-  {x: -50, y: -25},
-]
-
-sLongBlock = [
-  {x: -50, y: -25},
-  {x: 50, y: -25},
-  {x: 50, y: 25},
-  {x: -50, y: 25},
-]
-
-const triScale = 1;
-sTriangle = [
-  {x: 0, y: 40*triScale},
-  {x: 34.6* triScale, y: -20 * triScale},
-  {x: -34.6* triScale, y: -20* triScale}
-]
-
-shapes = [sBlock, sTrapezium, sParalellogram, sLongBlock, sTriangle];
-
 //INIT
 Matter.use(
   'matter-attractors'
@@ -79,7 +19,8 @@ var Engine = Matter.Engine,
 // create engine
 var engine = Engine.create();
 
-var canvas = document.getElementById("gameCanvas"); 
+var canvas = document.getElementById("gameCanvas");
+var context = canvas.getContext("2d");
 
 // create renderer
 var render = Render.create({
@@ -110,8 +51,8 @@ world.gravity.scale = 0;
 
 // create a body with an attractor
 planet = Bodies.circle(
-  render.options.width * 0.5,
-  render.options.height * 0.8,
+  0,
+  0,
   150, 
   {
   isStatic: true,
@@ -132,17 +73,43 @@ planet = Bodies.circle(
 100
 );
 
+planet.render.fillStyle = "#CD0E0E";
 World.add(world, planet);
 
-var mouse = Mouse.create(render.canvas);
+validationZone = Bodies.circle(
+  0,
+  0,
+  450, 
+  {
+  isStatic: true,
+  isSensor: true
+},
+100
+);
+
+validationZone.render.fillStyle = "#00000000";
+
+var gradient = context.createLinearGradient(0, 0, 800, 800);
+gradient.addColorStop("0", "white");
+gradient.addColorStop("0.5", "gray");
+gradient.addColorStop("1.0", "white");
+
+validationZone.render.strokeStyle = gradient;
+validationZone.render.lineWidth = 3;
+validationZone.render.opacity = 0.3;
+World.add(world, validationZone);
+
+mouse = Mouse.create(render.canvas);
+
+resize();
 
 placedBlocks = [];
 
 previewVertices = randomFromArray(shapes);
-previewBlock = CreateSensor(planet.position.x ,planet.position.y, 0, previewVertices);
+previewBlock = CreateSensor(planet.position.x ,planet.position.y, 0, previewVertices, false);
 
 hoverVertices = randomFromArray(shapes);
-hoverPreview = CreateSensor(planet.position.x ,planet.position.y, 0, hoverVertices);
+hoverPreview = CreateSensor(planet.position.x ,planet.position.y, 0, hoverVertices, true);
 hoverAngle = 0;
 
 //Scatter stars
@@ -166,15 +133,20 @@ for (var i = 0; i != 100; i++) {
   stars.push(body);
 }
 
-function CreateSensor(x, y, ang, vertices) {
+function CreateSensor(x, y, ang, vertices, preview) {
   console.log("Adding phantom block");
 
   var body = Bodies.fromVertices(x,y,vertices);
 
   body.isSensor = true;
   body.isStatic = true;
-  body.render.strokeStyle = "#dddddd";
-  body.render.fillStyle = "#33333388";
+  if (preview) {
+    body.render.strokeStyle = "#dddddd";
+    body.render.fillStyle = "#33333388";
+  } else {
+    body.render.strokeStyle = "#dddddd88";
+    body.render.fillStyle = "#33333344";
+  }
   body.render.lineWidth = 5;
 
   /*for (var i = 0; i != body.parts.length; i++) {
@@ -192,12 +164,6 @@ function CreateSensor(x, y, ang, vertices) {
 
 function CreateBlock(x, y, ang, vertexArray) {
   console.log("Adding actual block");
-  /*var body = Bodies.rectangle(
-    x,
-    y,
-    40,
-    40, 
-  );*/
 
   var body = Bodies.fromVertices(x,y,vertexArray);
 
@@ -216,22 +182,25 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 //INPUT
 
-var tRotateHoveredBlock = new Timer(0.2);
-var prevRotation = 0;
-var rotateAppend = 0;
+tRotateHoveredBlock = new Timer(0.15);
+prevRotation = 0;
+rotateAppend = 0;
 
 var tBlockPlacementCooldown = new Timer(2);
 
-//kRotateCW = new InputHandler(["ArrowLeft", "KeyA"], [], timing, 0.1, 0.2);
-//kRotateCCW = new InputHandler(["ArrowRight", "KeyD"], [], timing, 0.1, 0.2);
+kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 
 //UPDATE
 
 mouseDown = false;
 Events.on(engine, 'beforeUpdate', function() {
 
-    tRotateHoveredBlock.update(1/60);
-    tBlockPlacementCooldown.update(1/60);
+    var fps = 1 / 60;
+
+    tRotateHoveredBlock.update(fps);
+    tBlockPlacementCooldown.update(fps);
+
+    kRotate.update(fps);
 
     const rotateAngle = 0.0002;
     for(var i = 0; i != stars.length; i++) {
@@ -240,12 +209,12 @@ Events.on(engine, 'beforeUpdate', function() {
     }
 
     if (!tRotateHoveredBlock.running) {
-      if (mouse.wheelDelta) {
+      if (kRotate.fired) {
+        RotateBlock(-kRotate.delta);
+      } else if (mouse.wheelDelta) {
         console.log(mouse.wheelDelta);
-        prevRotation = hoverAngle;
-        rotateAppend = Math.sign(mouse.wheelDelta) * 0.25 * Math.PI;
+        RotateBlock(mouse.wheelDelta);
         mouse.wheelDelta = 0;
-        tRotateHoveredBlock.start();
       }
     } else {
       hoverAngle = prevRotation + rotateAppend * tRotateHoveredBlock.normalized();
@@ -253,7 +222,7 @@ Events.on(engine, 'beforeUpdate', function() {
     }
 
     if (previewBlock) {
-      Body.setPosition(previewBlock, {x: canvas.width - 75, y: 75});
+      Body.setPosition(previewBlock, {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75});
     }
 
     if (hoverPreview) {
@@ -298,34 +267,53 @@ Events.on(engine, 'beforeUpdate', function() {
     }
 });
 
-
+function RotateBlock(rotateDelta) {
+  prevRotation = hoverAngle;
+  rotateAppend = Math.sign(rotateDelta) * 0.25 * Math.PI;
+  tRotateHoveredBlock.start();
+  //console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
+}
 
 //LIFECYCLE
 
 function run() {
   window.requestAnimationFrame(run);
+
+  kRotate.update(1 / 60);
+
   Engine.update(engine, 1000 / 60);
 };
 
 window.onresize = function() {
-  ///QQQ Does not work without bounds, move all objects in scene upon resi
+  resize();
   console.log("resized canvas");
-
-  var xDelta = canvas.width - canvas.clientWidth;
-  var yDelta = canvas.height - canvas.clientHeight;
-
-	canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-  
-  translate = {
-      x: xDelta * .5,
-      y: yDelta * .5
-  };
-
-  Mouse.setOffset(mouse, {x: mouse.offset.x + xDelta * .5, y: mouse.offset.y + yDelta * .5})
-
-  Bounds.translate(render.bounds, translate);
 };
+
+function resize() {
+
+  var zoom = 1;
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  if (w < 900 || h < 900) {
+    zoom = 1.5;
+
+    if (w < 600 || h < 600) {
+      zoom = 2;
+    }
+  }
+
+  render.bounds.min.x = -w * .5 * zoom;
+  render.bounds.min.y = -h * .5 * zoom;
+  render.bounds.max.x = w * .5 * zoom;
+  render.bounds.max.y = h * .5 * zoom;
+  render.options.width = w;
+  render.options.height = h;
+  render.canvas.width = w;
+  render.canvas.height = h;
+
+  Mouse.setOffset(mouse, {x: -w * .5 * zoom, y: -h * .5 * zoom});
+  Mouse.setScale(mouse, {x: zoom, y: zoom});
+}
 
 run();
 
@@ -350,6 +338,6 @@ function rotateAroundPointRadians(cx, cy, x, y, radians) {
 
 //TODO
 console.log("Todo:\n" 
-+"- Shapes, rendering UI, checking if the entire build-a-tower-on-a-planet things holds up gameplay-wise.\n"
-+"- Make more shapes & next shape preview.\n"
-+"- Allow rescaling the screen on small window sizes.")
++"- Add level system then make levels\n"
++"- Make planet DEADLY! & enfore validation (dotted ring around planet)\n"
++"- Make next shape preview.\n")

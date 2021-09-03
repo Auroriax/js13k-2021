@@ -1,7 +1,7 @@
 //TOMATO
 
 //TIMING
-class Timing {
+/*class Timing {
 	constructor(minFrameLength, maxFrameLength) {
 		this.minFrameLength = minFrameLength;
 		this.maxFrameLength = maxFrameLength;
@@ -33,7 +33,7 @@ class Timing {
 	perSecond(v) {
 		return v * this.currentFrameLength;
 	}
-}
+}*/
 
 class Timer {
 	constructor(timerDuration) {
@@ -126,11 +126,10 @@ const pressedState = {
 };
 
 class InputHandler {
-	constructor(positiveKeys, negativeKeys = null, timer = null, timeForRefiring = 0, extraTimeForFirstRefire = 0) {
+	constructor(positiveKeys, negativeKeys = null, timeForRefiring = 0, extraTimeForFirstRefire = 0) {
 		this.delta = 0;
 		this.posKeysHeld = [];
 		this.negKeysHeld = [];
-		this.timer = timer;
 		this.prevHeldTime = 0;
 		this.heldTime = 0;
 		this.fired = false;
@@ -209,10 +208,10 @@ class InputHandler {
 		}
 	}
 
-	update() {
-		if (this.timer && this.delta != 0) {
-			this.heldTime += this.timer.currentFrameLength;
-			this.timeSinceLastRefire += this.timer.currentFrameLength;
+	update(frameLength) {
+		if (this.delta != 0) {
+			this.heldTime += frameLength;
+			this.timeSinceLastRefire += frameLength;
 
 			if (this.prevHeldTime == 0 || (this.timesFired > 1 && this.timeSinceLastRefire >= this.waitForRefiring) || (this.timesFired <= 1 && this.timeSinceLastRefire >= this.firstWaitForRefiring)) {
 				this.fired = true;
