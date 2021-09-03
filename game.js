@@ -5,7 +5,6 @@ Matter.use(
 
 var Engine = Matter.Engine,
     Events = Matter.Events,
-    Runner = Matter.Runner,
     Render = Matter.Render,
     World = Matter.World,
     Body = Matter.Body,
@@ -13,7 +12,6 @@ var Engine = Matter.Engine,
     Common = Matter.Common,
     Bodies = Matter.Bodies,
     Bounds = Matter.Bounds,
-    MouseConstraint = Matter.MouseConstraint,
     SAT = Matter.SAT;
 
 // create engine
@@ -39,10 +37,6 @@ var render = Render.create({
 
 var zoomLevel = 1;
 
-// create runner
-var runner = Runner.create();
-
-Runner.run(runner, engine);
 Render.run(render);
 
 // create demo scene
@@ -303,9 +297,9 @@ function RotateBlock(rotateDelta) {
 function run() {
   window.requestAnimationFrame(run);
 
-  kRotate.update(1 / 60);
+  kRotate.update(1 / 30);
 
-  Engine.update(engine, 1000 / 60);
+  Engine.update(engine, 1000 / 30);
 };
 
 window.onresize = function() {
