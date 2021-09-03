@@ -102,14 +102,15 @@ World.add(world, validationZone);
 mouse = Mouse.create(render.canvas);
 
 resize();
+mouse.position = {x: 0, y: -1};
 
 placedBlocks = [];
 
 previewVertices = randomFromArray(shapes);
-previewBlock = CreateSensor(planet.position.x ,planet.position.y, 0, previewVertices, false);
+previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
 
-hoverVertices = randomFromArray(shapes);
-hoverPreview = CreateSensor(planet.position.x ,planet.position.y, 0, hoverVertices, true);
+hoverVertices = randomFromArray(shapes, previewVertices);
+hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
 hoverAngle = 0;
 
 //Scatter stars
@@ -140,13 +141,14 @@ function CreateSensor(x, y, ang, vertices, preview) {
 
   body.isSensor = true;
   body.isStatic = true;
+
+  body.render.strokeStyle = "#dddddd";
+  body.render.fillStyle = "#33333388";
+
   if (preview) {
-    body.render.strokeStyle = "#dddddd";
-    body.render.fillStyle = "#33333388";
-  } else {
-    body.render.strokeStyle = "#dddddd88";
-    body.render.fillStyle = "#33333344";
+    body.render.opacity = 0.5;
   }
+
   body.render.lineWidth = 5;
 
   /*for (var i = 0; i != body.parts.length; i++) {
@@ -186,7 +188,8 @@ tRotateHoveredBlock = new Timer(0.15);
 prevRotation = 0;
 rotateAppend = 0;
 
-var tBlockPlacementCooldown = new Timer(2);
+tBlockPlacementCooldown = new Timer(2);
+tNewBlockSpawn = new Timer(1);
 
 kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 
@@ -199,6 +202,7 @@ Events.on(engine, 'beforeUpdate', function() {
 
     tRotateHoveredBlock.update(fps);
     tBlockPlacementCooldown.update(fps);
+    tNewBlockSpawn.update(fps);
 
     kRotate.update(fps);
 
@@ -221,49 +225,69 @@ Events.on(engine, 'beforeUpdate', function() {
       mouse.wheelDelta = 0;
     }
 
+    var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
+
     if (previewBlock) {
-      Body.setPosition(previewBlock, {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75});
+      Body.setPosition(previewBlock, previewBlockPos);
     }
 
     if (hoverPreview) {
-      Body.setPosition(hoverPreview, mouse.position);
+      var position = mouse.position;
+      if (tNewBlockSpawn.running) {
+        var progress = EaseInOut(tNewBlockSpawn.normalized())
+        position = {
+          x: mouse.position.x + (previewBlockPos.x - mouse.position.x) * (1-progress),
+          y: mouse.position.y + (previewBlockPos.y - mouse.position.y) * (1-progress),
+        }
+        hoverPreview.render.opacity = .5 + .5 * progress;
+        previewBlock.render.opacity = .5 * progress;
+      }
+
+      Body.setPosition(hoverPreview, position);
       Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle);
-    }
+        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle
+      );
 
-    var colliding = false;
+      var colliding = false;
 
-    if (SAT.collides(hoverPreview, planet).collided) {
-      colliding = true
-    } else {
-      for (var i = 0; i != placedBlocks.length; i++) {
-        if (SAT.collides(placedBlocks[i], hoverPreview).collided) {
-          colliding = true; break;
+      if (SAT.collides(hoverPreview, planet).collided) {
+        colliding = true
+      } else {
+        for (var i = 0; i != placedBlocks.length; i++) {
+          if (SAT.collides(placedBlocks[i], hoverPreview).collided) {
+            colliding = true; break;
+          }
         }
       }
-    }
+  
+      hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
 
-    hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
-
-    if (mouse.button == 0 && !mouseDown) {
-      mouseDown = true;
-
-      if (!colliding) {
-        CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
-        World.remove(world, hoverPreview);
-        tBlockPlacementCooldown.start();
+      if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown) {
+        mouseDown = true;
+  
+        if (!colliding) {
+          CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
+          World.remove(world, hoverPreview);
+          hoverPreview = null;
+          tBlockPlacementCooldown.start();
+        }
+      } else if (mouse.button == -1 && mouseDown) {
+        mouseDown = false;
       }
-    } else if (mouse.button == -1 && mouseDown) {
-      mouseDown = false;
     }
 
     if (tBlockPlacementCooldown.finishedThisFrame) {
-      hoverVertices = randomFromArray(shapes);
-      hoverPreview = CreateSensor(mouse.position.x, mouse.position.y, 0, hoverVertices);
+      hoverVertices = previewVertices;
+      hoverPreview = previewBlock;
+
+      previewVertices = randomFromArray(shapes, hoverPreview);
+      previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
       hoverAngle = 0;
 
       Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
         hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
+
+      tNewBlockSpawn.start();
     }
 });
 
@@ -323,8 +347,13 @@ function degreesToPoint(x1, y1, x2, y2) {
   return Math.atan2(y2 - y1, x2 - x1);
 }
 
-function randomFromArray(array) {
-  return array[Math.floor(Math.random() * array.length)];
+function randomFromArray(array, rerollWhen = null) {
+  var result = array[Math.floor(Math.random() * array.length)];
+  if (result == rerollWhen) {
+    //Reroll once!
+    result = array[Math.floor(Math.random() * array.length)]
+  }
+  return result;
 }
 
 //https://stackoverflow.com/a/17411276
@@ -336,8 +365,12 @@ function rotateAroundPointRadians(cx, cy, x, y, radians) {
   return {x: nx, y: ny};
 }
 
+function EaseInOut(t) {
+	return(t*(2-t));
+}
+
 //TODO
 console.log("Todo:\n" 
 +"- Add level system then make levels\n"
 +"- Make planet DEADLY! & enfore validation (dotted ring around planet)\n"
-+"- Make next shape preview.\n")
++"- Logo and menu screen. SMALL CAPS\n")
