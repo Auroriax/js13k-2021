@@ -8271,7 +8271,6 @@ Matter.Mouse = __webpack_require__(12);
 Matter.Pair = __webpack_require__(9);
 Matter.Pairs = __webpack_require__(20);
 Matter.Plugin = __webpack_require__(15);
-Matter.Query = __webpack_require__(26);
 Matter.Render = __webpack_require__(16);
 Matter.Resolver = __webpack_require__(19);
 Matter.SAT = __webpack_require__(14);
@@ -8375,36 +8374,6 @@ var Common = __webpack_require__(0);
 
 })();
 
-
 /***/ }),
-/* 24 */
-/***/ (function(module, exports, __webpack_require__) {
-//REMOVED
-
-/***/ }),
-/* 25 */
-/***/ (function(module, exports, __webpack_require__) {
-//REMOVED
-
-/***/ }),
-/* 26 */
-/***/ (function(module, exports, __webpack_require__) {
-    //REMOVED
-/***/ }),
-/* 27 */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-
-/***/ }),
-/* 28 */
-/***/ (function(module, exports, __webpack_require__) {
-//REMOVED
-
-/***/ }),
-/* 29 */
-/***/ (function(module, exports, __webpack_require__) {
-//REMOVED
-/***/ })
 /******/ ]);
 });

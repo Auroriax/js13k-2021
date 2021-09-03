@@ -1,18 +1,18 @@
 //INIT
 Matter.use(
-  'matter-attractors'
+	'matter-attractors'
 )
 
 var Engine = Matter.Engine,
-    Events = Matter.Events,
-    Render = Matter.Render,
-    Composite = Matter.Composite,
-    Body = Matter.Body,
-    Mouse = Matter.Mouse,
-    Common = Matter.Common,
-    Bodies = Matter.Bodies,
-    Bounds = Matter.Bounds,
-    SAT = Matter.SAT;
+		Events = Matter.Events,
+		Render = Matter.Render,
+		Composite = Matter.Composite,
+		Body = Matter.Body,
+		Mouse = Matter.Mouse,
+		Common = Matter.Common,
+		Bodies = Matter.Bodies,
+		Bounds = Matter.Bounds,
+		SAT = Matter.SAT;
 
 // create engine
 var engine = Engine.create();
@@ -22,17 +22,17 @@ var context = canvas.getContext("2d");
 
 // create renderer
 var render = Render.create({
-  canvas:  canvas,
-  engine: engine,
-  options: {
-    width: canvas.clientWidth,
-    height: canvas.clientHeight,
-    wireframes: false,
-    hasBounds: true,
-    background: "#333333",
+	canvas:  canvas,
+	engine: engine,
+	options: {
+		width: canvas.clientWidth,
+		height: canvas.clientHeight,
+		wireframes: false,
+		hasBounds: true,
+		background: "#333333",
 
-    showPerformance: true
-  }
+		showPerformance: true
+	}
 });
 
 var zoomLevel = 1;
@@ -44,24 +44,24 @@ engine.gravity.scale = 0;
 
 // create a body with an attractor
 planet = Bodies.circle(
-  0,
-  0,
-  150, 
-  {
-  isStatic: true,
+	0,
+	0,
+	150, 
+	{
+	isStatic: true,
 
-  // example of an attractor function that 
-  // returns a force vector that applies to bodyB
-  plugin: {
-    attractors: [
-      function(bodyA, bodyB) {
-        return {
-          x: (bodyA.position.x - bodyB.position.x) * 1e-6,
-          y: (bodyA.position.y - bodyB.position.y) * 1e-6,
-        };
-      }
-    ]
-  }
+	// example of an attractor function that 
+	// returns a force vector that applies to bodyB
+	plugin: {
+		attractors: [
+			function(bodyA, bodyB) {
+				return {
+					x: (bodyA.position.x - bodyB.position.x) * 1e-6,
+					y: (bodyA.position.y - bodyB.position.y) * 1e-6,
+				};
+			}
+		]
+	}
 },
 100
 );
@@ -70,12 +70,12 @@ planet.render.fillStyle = "#CD0E0E";
 Composite.add(world, planet);
 
 validationZone = Bodies.circle(
-  0,
-  0,
-  450, 
-  {
-  isStatic: true,
-  isSensor: true
+	0,
+	0,
+	450, 
+	{
+	isStatic: true,
+	isSensor: true
 },
 100
 );
@@ -110,69 +110,69 @@ hoverAngle = 0;
 stars = [];
 const RANGE = 1000;
 for (var i = 0; i != 100; i++) {
-  var body = Bodies.circle(
-    planet.position.x + Common.random(-RANGE, RANGE),
-    planet.position.y + Common.random(-RANGE, RANGE),
-    Common.random(2,5)
-  );
+	var body = Bodies.circle(
+		planet.position.x + Common.random(-RANGE, RANGE),
+		planet.position.y + Common.random(-RANGE, RANGE),
+		Common.random(2,5)
+	);
 
-  body.isSensor = true;
-  body.isStatic = true;
-  body.render.strokeStyle = "#dddddd";
-  body.render.fillStyle = "#33333344";
-  body.render.lineWidth = 1;
-  body.collisionFilter.group = 1;
+	body.isSensor = true;
+	body.isStatic = true;
+	body.render.strokeStyle = "#dddddd";
+	body.render.fillStyle = "#33333344";
+	body.render.lineWidth = 1;
+	body.collisionFilter.group = 1;
 
-  Composite.add(world, body);
-  stars.push(body);
+	Composite.add(world, body);
+	stars.push(body);
 }
 
 function CreateSensor(x, y, ang, vertices, preview) {
-  console.log("Adding phantom block");
+	console.log("Adding phantom block");
 
-  var body = Bodies.fromVertices(x,y,vertices);
+	var body = Bodies.fromVertices(x,y,vertices);
 
-  body.isSensor = true;
-  body.isStatic = true;
+	body.isSensor = true;
+	body.isStatic = true;
 
-  body.render.strokeStyle = "#dddddd";
-  body.render.fillStyle = "#33333388";
+	body.render.strokeStyle = "#dddddd";
+	body.render.fillStyle = "#33333388";
 
-  if (preview) {
-    body.render.opacity = 0.5;
-  }
+	if (preview) {
+		body.render.opacity = 0.5;
+	}
 
-  body.render.lineWidth = 5;
+	body.render.lineWidth = 5;
 
-  /*for (var i = 0; i != body.parts.length; i++) {
-    body.parts[i].isSensor = true;
-    body.parts[i].isStatic = true;
-    body.parts[i].render.strokeStyle = "#dddddd";
-    body.parts[i].render.fillStyle = "#33333388";
-    body.parts[i].render.lineWidth = 5;
-  }*/
+	/*for (var i = 0; i != body.parts.length; i++) {
+		body.parts[i].isSensor = true;
+		body.parts[i].isStatic = true;
+		body.parts[i].render.strokeStyle = "#dddddd";
+		body.parts[i].render.fillStyle = "#33333388";
+		body.parts[i].render.lineWidth = 5;
+	}*/
 
-  Composite.add(world, body);
+	Composite.add(world, body);
 
-  return body;
+	return body;
 }
 
 function CreateBlock(x, y, ang, vertexArray) {
-  console.log("Adding actual block");
+	console.log("Adding actual block");
 
-  var body = Bodies.fromVertices(x,y,vertexArray);
+	var body = Bodies.fromVertices(x,y,vertexArray);
 
-  Body.setAngle(body, ang);
+	Body.setAngle(body, ang);
 
-  body.friction = 0.125;
-  body.density = 0.005;
+	body.friction = 0.125;
+	body.density = 0.005;
 
-  body.render.fillStyle = "#dddddd";
-  body.render.strokeStyle = "#333333";
-  body.render.lineWidth = 1; 
+	body.render.fillStyle = "#dddddd";
+	body.render.strokeStyle = "#333333";
+	body.render.lineWidth = 1; 
 
-  placedBlocks.push(body);
-  Composite.add(world, body);
+	placedBlocks.push(body);
+	Composite.add(world, body);
 }
 
 //INPUT
@@ -191,145 +191,146 @@ kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight",
 mouseDown = false;
 Events.on(engine, 'beforeUpdate', function() {
 
-    var fps = 1 / 60;
+		var fps = 1 / 60;
 
-    tRotateHoveredBlock.update(fps);
-    tBlockPlacementCooldown.update(fps);
-    tNewBlockSpawn.update(fps);
+		tRotateHoveredBlock.update(fps);
+		tBlockPlacementCooldown.update(fps);
+		tNewBlockSpawn.update(fps);
 
-    kRotate.update(fps);
+		kRotate.update(fps);
 
-    const rotateAngle = 0.0002;
-    for(var i = 0; i != stars.length; i++) {
-      var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, stars[i].position.x, stars[i].position.y, rotateAngle);
-      Body.setPosition(stars[i], newPos);
-    }
+		const rotateAngle = 0.0002;
+		for(var i = 0; i != stars.length; i++) {
+			var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, stars[i].position.x, stars[i].position.y, rotateAngle);
+			Body.setPosition(stars[i], newPos);
+		}
 
-    if (!tRotateHoveredBlock.running) {
-      if (kRotate.fired) {
-        RotateBlock(-kRotate.delta);
-      } else if (mouse.wheelDelta) {
-        console.log(mouse.wheelDelta);
-        RotateBlock(mouse.wheelDelta);
-        mouse.wheelDelta = 0;
-      }
-    } else {
-      hoverAngle = prevRotation + rotateAppend * tRotateHoveredBlock.normalized();
-      mouse.wheelDelta = 0;
-    }
+		if (!tRotateHoveredBlock.running) {
+			if (kRotate.fired) {
+				RotateBlock(-kRotate.delta);
+			} else if (mouse.wheelDelta) {
+				console.log(mouse.wheelDelta);
+				RotateBlock(mouse.wheelDelta);
+				mouse.wheelDelta = 0;
+			}
+		} else {
+			hoverAngle = prevRotation + rotateAppend * tRotateHoveredBlock.normalized();
+			mouse.wheelDelta = 0;
+		}
 
-    var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
+		var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
 
-    if (previewBlock) {
-      Body.setPosition(previewBlock, previewBlockPos);
-    }
+		if (previewBlock) {
+			Body.setPosition(previewBlock, previewBlockPos);
+		}
 
-    if (hoverPreview) {
-      var position = mouse.position;
-      if (tNewBlockSpawn.running) {
-        var progress = EaseInOut(tNewBlockSpawn.normalized())
-        position = {
-          x: mouse.position.x + (previewBlockPos.x - mouse.position.x) * (1-progress),
-          y: mouse.position.y + (previewBlockPos.y - mouse.position.y) * (1-progress),
-        }
-        hoverPreview.render.opacity = .5 + .5 * progress;
-        previewBlock.render.opacity = .5 * progress;
-      }
+		if (hoverPreview) {
+			var position = mouse.position;
+			if (tNewBlockSpawn.running) {
+				var progress = EaseInOut(tNewBlockSpawn.normalized())
+				position = {
+					x: mouse.position.x + (previewBlockPos.x - mouse.position.x) * (1-progress),
+					y: mouse.position.y + (previewBlockPos.y - mouse.position.y) * (1-progress),
+				}
+				hoverPreview.render.opacity = .5 + .5 * progress;
+				previewBlock.render.opacity = .5 * progress;
+			}
 
-      Body.setPosition(hoverPreview, position);
-      Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
-      );
+			Body.setPosition(hoverPreview, position);
+			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
+			);
 
-      var colliding = false;
+			var colliding = false;
 
-      if (SAT.collides(hoverPreview, planet).collided) {
-        colliding = true
-      } else {
-        for (var i = 0; i != placedBlocks.length; i++) {
-          if (SAT.collides(placedBlocks[i], hoverPreview).collided) {
-            colliding = true; break;
-          }
-        }
-      }
-  
-      hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
+			if (SAT.collides(hoverPreview, planet).collided) {
+				colliding = true
+			} else {
+				for (var i = 0; i != placedBlocks.length; i++) {
+					if (SAT.collides(placedBlocks[i], hoverPreview).collided) {
+						colliding = true; break;
+					}
+				}
+			}
+	
+			hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
 
-      if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown) {
-        mouseDown = true;
-  
-        if (!colliding) {
-          CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
-          Composite.remove(world, hoverPreview);
-          hoverPreview = null;
-          tBlockPlacementCooldown.start();
-        }
-      } else if (mouse.button == -1 && mouseDown) {
-        mouseDown = false;
-      }
-    }
+			if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown) {
+				mouseDown = true;
+	
+				if (!colliding) {
+					CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
+					Composite.remove(world, hoverPreview);
+					hoverPreview = null;
+					tBlockPlacementCooldown.start();
+				}
+			} else if (mouse.button == -1 && mouseDown) {
+				mouseDown = false;
+			}
+		}
 
-    if (tBlockPlacementCooldown.finishedThisFrame) {
-      hoverVertices = previewVertices;
-      hoverPreview = previewBlock;
+		if (tBlockPlacementCooldown.finishedThisFrame) {
+			hoverVertices = previewVertices;
+			hoverPreview = previewBlock;
 
-      previewVertices = randomFromArray(shapes, hoverPreview);
-      previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
-      hoverAngle = 0;
+			previewVertices = randomFromArray(shapes, hoverPreview);
+			previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
+			previewBlock.render.opacity = 0;
+			hoverAngle = 0;
 
-      Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
+			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
-      tNewBlockSpawn.start();
-    }
+			tNewBlockSpawn.start();
+		}
 });
 
 function RotateBlock(rotateDelta) {
-  prevRotation = hoverAngle;
-  rotateAppend = Math.sign(rotateDelta) * 0.25 * Math.PI;
-  tRotateHoveredBlock.start();
-  //console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
+	prevRotation = hoverAngle;
+	rotateAppend = Math.sign(rotateDelta) * 0.25 * Math.PI;
+	tRotateHoveredBlock.start();
+	//console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
 }
 
 //LIFECYCLE
 
 function run() {
-  window.requestAnimationFrame(run);
+	window.requestAnimationFrame(run);
 
-  kRotate.update(1 / 30);
+	kRotate.update(1 / 30);
 
-  Engine.update(engine, 1000 / 30);
+	Engine.update(engine, 1000 / 30);
 };
 
 window.onresize = function() {
-  resize();
-  console.log("resized canvas");
+	resize();
+	console.log("resized canvas");
 };
 
 function resize() {
 
-  var zoom = 1;
-  var w = window.innerWidth;
-  var h = window.innerHeight;
-  if (w < 900 || h < 900) {
-    zoom = 1.5;
+	var zoom = 1;
+	var w = window.innerWidth;
+	var h = window.innerHeight;
+	if (w < 900 || h < 900) {
+		zoom = 1.5;
 
-    if (w < 600 || h < 600) {
-      zoom = 2;
-    }
-  }
+		if (w < 600 || h < 600) {
+			zoom = 2;
+		}
+	}
 
-  render.bounds.min.x = -w * .5 * zoom;
-  render.bounds.min.y = -h * .5 * zoom;
-  render.bounds.max.x = w * .5 * zoom;
-  render.bounds.max.y = h * .5 * zoom;
-  render.options.width = w;
-  render.options.height = h;
-  render.canvas.width = w;
-  render.canvas.height = h;
+	render.bounds.min.x = -w * .5 * zoom;
+	render.bounds.min.y = -h * .5 * zoom;
+	render.bounds.max.x = w * .5 * zoom;
+	render.bounds.max.y = h * .5 * zoom;
+	render.options.width = w;
+	render.options.height = h;
+	render.canvas.width = w;
+	render.canvas.height = h;
 
-  Mouse.setOffset(mouse, {x: -w * .5 * zoom, y: -h * .5 * zoom});
-  Mouse.setScale(mouse, {x: zoom, y: zoom});
+	Mouse.setOffset(mouse, {x: -w * .5 * zoom, y: -h * .5 * zoom});
+	Mouse.setScale(mouse, {x: zoom, y: zoom});
 }
 
 run();
@@ -337,25 +338,25 @@ run();
 //UTILITY
 
 function degreesToPoint(x1, y1, x2, y2) {
-  return Math.atan2(y2 - y1, x2 - x1);
+	return Math.atan2(y2 - y1, x2 - x1);
 }
 
 function randomFromArray(array, rerollWhen = null) {
-  var result = array[Math.floor(Math.random() * array.length)];
-  if (result == rerollWhen) {
-    //Reroll once!
-    result = array[Math.floor(Math.random() * array.length)]
-  }
-  return result;
+	var result = array[Math.floor(Math.random() * array.length)];
+	if (result == rerollWhen) {
+		//Reroll once!
+		result = array[Math.floor(Math.random() * array.length)]
+	}
+	return result;
 }
 
 //https://stackoverflow.com/a/17411276
 function rotateAroundPointRadians(cx, cy, x, y, radians) {
-  var cos = Math.cos(radians),
-      sin = Math.sin(radians),
-      nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
-      ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-  return {x: nx, y: ny};
+	var cos = Math.cos(radians),
+			sin = Math.sin(radians),
+			nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+			ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+	return {x: nx, y: ny};
 }
 
 function EaseInOut(t) {
