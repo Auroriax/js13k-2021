@@ -1,40 +1,5 @@
 //TOMATO
 
-//TIMING
-/*class Timing {
-	constructor(minFrameLength, maxFrameLength) {
-		this.minFrameLength = minFrameLength;
-		this.maxFrameLength = maxFrameLength;
-		this.lastUpdate = new Date();
-
-		this.currentFrameLength = 0;
-		this.stepsProcessed = 0;
-		this.timePlaying = 0;
-	}
-
-	update(overwrite = null) {
-		const newUpdate = new Date();
-
-		if (!overwrite) {
-			this.currentFrameLength = (newUpdate - this.lastUpdate) / 1000;
-		} else {
-			this.currentFrameLength = overwrite;
-		}
-
-		this.lastUpdate = newUpdate;
-		this.timePlaying += this.currentFrameLength;
-		this.stepsProcessed += 1;
-	}
-
-	fps() {
-		return (1 / this.currentFrameLength)
-	}
-
-	perSecond(v) {
-		return v * this.currentFrameLength;
-	}
-}*/
-
 class Timer {
 	constructor(timerDuration) {
 		this.timer = 0;
@@ -72,50 +37,6 @@ class Timer {
 		}
 	}
 }
-
-//COLLISIONS
-/*class Vector2 {
-	constructor(x,y) {
-		this.x = x;
-		this.y = y;
-	}
-
-	//Returns a new Vector2 with the x and y axis swapped around.
-	swap() {return new Vector2(this.y, this.x)}
-}
-
-class Hitbox {
-	constructor(xOffset, yOffset, width, height) {
-		this.origin = new Vector2(xOffset, yOffset); //Topleft corner
-		this.width = width;
-		this.height = height;
-	}
-
-	//Render this hitbox for debugging purposes. If the point falls in the hitbox, change appearance.
-	render(ctx, point = null) {
-		ctx.beginPath();
-
-		if (point != null && PointInRectangle(point, this)) {
-			console.log("True!");
-			ctx.lineWidth = 5;
-		} else {
-			ctx.lineWidth = 1;
-		}
-
-		ctx.rect(this.origin.x, this.origin.y, this.width, this.height);
-		ctx.stroke();
-	}
-}
-
-//A square hitbox with the origin in the center.
-function HitboxSquare(xOffset, yOffset, size) {
-	return new Hitbox(xOffset, yOffset, size, size, size, size);
-}
-
-function PointInRectangle(point, hitbox) {
-	return (point.x > hitbox.origin.x && point.x < hitbox.origin.x + hitbox.width 
-		&& point.y > hitbox.origin.y && point.y < hitbox.origin.y + hitbox.height )
-}*/
 
 //INPUT
 const pressedState = {

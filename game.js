@@ -6,7 +6,7 @@ Matter.use(
 var Engine = Matter.Engine,
     Events = Matter.Events,
     Render = Matter.Render,
-    World = Matter.World,
+    Composite = Matter.Composite,
     Body = Matter.Body,
     Mouse = Matter.Mouse,
     Common = Matter.Common,
@@ -39,9 +39,8 @@ var zoomLevel = 1;
 
 Render.run(render);
 
-// create demo scene
-var world = engine.world;
-world.gravity.scale = 0;
+world = engine.world;
+engine.gravity.scale = 0;
 
 // create a body with an attractor
 planet = Bodies.circle(
@@ -68,7 +67,7 @@ planet = Bodies.circle(
 );
 
 planet.render.fillStyle = "#CD0E0E";
-World.add(world, planet);
+Composite.add(world, planet);
 
 validationZone = Bodies.circle(
   0,
@@ -91,7 +90,7 @@ gradient.addColorStop("1.0", "white");
 validationZone.render.strokeStyle = gradient;
 validationZone.render.lineWidth = 3;
 validationZone.render.opacity = 0.3;
-World.add(world, validationZone);
+Composite.add(world, validationZone);
 
 mouse = Mouse.create(render.canvas);
 
@@ -124,7 +123,7 @@ for (var i = 0; i != 100; i++) {
   body.render.lineWidth = 1;
   body.collisionFilter.group = 1;
 
-  World.add(world, body);
+  Composite.add(world, body);
   stars.push(body);
 }
 
@@ -153,7 +152,7 @@ function CreateSensor(x, y, ang, vertices, preview) {
     body.parts[i].render.lineWidth = 5;
   }*/
 
-  World.add(world, body);
+  Composite.add(world, body);
 
   return body;
 }
@@ -173,7 +172,7 @@ function CreateBlock(x, y, ang, vertexArray) {
   body.render.lineWidth = 1; 
 
   placedBlocks.push(body);
-  World.add(world, body);
+  Composite.add(world, body);
 }
 
 //INPUT
@@ -239,7 +238,7 @@ Events.on(engine, 'beforeUpdate', function() {
 
       Body.setPosition(hoverPreview, position);
       Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle
+        hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
       );
 
       var colliding = false;
@@ -261,7 +260,7 @@ Events.on(engine, 'beforeUpdate', function() {
   
         if (!colliding) {
           CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
-          World.remove(world, hoverPreview);
+          Composite.remove(world, hoverPreview);
           hoverPreview = null;
           tBlockPlacementCooldown.start();
         }

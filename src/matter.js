@@ -3751,487 +3751,7 @@ var Events = __webpack_require__(4);
 /***/ }),
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
-
-/**
-* The `Matter.Constraint` module contains methods for creating and manipulating constraints.
-* Constraints are used for specifying that a fixed distance must be maintained between two bodies (or a body and a fixed world-space position).
-* The stiffness of constraints can be modified to create springs or elastic.
-*
-* See the included usage [examples](https://github.com/liabru/matter-js/tree/master/examples).
-*
-* @class Constraint
-*/
-
-var Constraint = {};
-
-module.exports = Constraint;
-
-var Vertices = __webpack_require__(3);
-var Vector = __webpack_require__(2);
-var Sleeping = __webpack_require__(7);
-var Bounds = __webpack_require__(1);
-var Axes = __webpack_require__(10);
-var Common = __webpack_require__(0);
-
-(function() {
-
-    Constraint._warming = 0.4;
-    Constraint._torqueDampen = 1;
-    Constraint._minLength = 0.000001;
-
-    /**
-     * Creates a new constraint.
-     * All properties have default values, and many are pre-calculated automatically based on other properties.
-     * To simulate a revolute constraint (or pin joint) set `length: 0` and a high `stiffness` value (e.g. `0.7` or above).
-     * If the constraint is unstable, try lowering the `stiffness` value and / or increasing `engine.constraintIterations`.
-     * For compound bodies, constraints must be applied to the parent body (not one of its parts).
-     * See the properties section below for detailed information on what you can pass via the `options` object.
-     * @method create
-     * @param {} options
-     * @return {constraint} constraint
-     */
-    Constraint.create = function(options) {
-        var constraint = options;
-
-        // if bodies defined but no points, use body centre
-        if (constraint.bodyA && !constraint.pointA)
-            constraint.pointA = { x: 0, y: 0 };
-        if (constraint.bodyB && !constraint.pointB)
-            constraint.pointB = { x: 0, y: 0 };
-
-        // calculate static length using initial world space points
-        var initialPointA = constraint.bodyA ? Vector.add(constraint.bodyA.position, constraint.pointA) : constraint.pointA,
-            initialPointB = constraint.bodyB ? Vector.add(constraint.bodyB.position, constraint.pointB) : constraint.pointB,
-            length = Vector.magnitude(Vector.sub(initialPointA, initialPointB));
-    
-        constraint.length = typeof constraint.length !== 'undefined' ? constraint.length : length;
-
-        // option defaults
-        constraint.id = constraint.id || Common.nextId();
-        constraint.label = constraint.label || 'Constraint';
-        constraint.type = 'constraint';
-        constraint.stiffness = constraint.stiffness || (constraint.length > 0 ? 1 : 0.7);
-        constraint.damping = constraint.damping || 0;
-        constraint.angularStiffness = constraint.angularStiffness || 0;
-        constraint.angleA = constraint.bodyA ? constraint.bodyA.angle : constraint.angleA;
-        constraint.angleB = constraint.bodyB ? constraint.bodyB.angle : constraint.angleB;
-        constraint.plugin = {};
-
-        // render
-        var render = {
-            visible: true,
-            lineWidth: 2,
-            strokeStyle: '#ffffff',
-            type: 'line',
-            anchors: true
-        };
-
-        if (constraint.length === 0 && constraint.stiffness > 0.1) {
-            render.type = 'pin';
-            render.anchors = false;
-        } else if (constraint.stiffness < 0.9) {
-            render.type = 'spring';
-        }
-
-        constraint.render = Common.extend(render, constraint.render);
-
-        return constraint;
-    };
-
-    /**
-     * Prepares for solving by constraint warming.
-     * @private
-     * @method preSolveAll
-     * @param {body[]} bodies
-     */
-    Constraint.preSolveAll = function(bodies) {
-        for (var i = 0; i < bodies.length; i += 1) {
-            var body = bodies[i],
-                impulse = body.constraintImpulse;
-
-            if (body.isStatic || (impulse.x === 0 && impulse.y === 0 && impulse.angle === 0)) {
-                continue;
-            }
-
-            body.position.x += impulse.x;
-            body.position.y += impulse.y;
-            body.angle += impulse.angle;
-        }
-    };
-
-    /**
-     * Solves all constraints in a list of collisions.
-     * @private
-     * @method solveAll
-     * @param {constraint[]} constraints
-     * @param {number} timeScale
-     */
-    Constraint.solveAll = function(constraints, timeScale) {
-        // Solve fixed constraints first.
-        for (var i = 0; i < constraints.length; i += 1) {
-            var constraint = constraints[i],
-                fixedA = !constraint.bodyA || (constraint.bodyA && constraint.bodyA.isStatic),
-                fixedB = !constraint.bodyB || (constraint.bodyB && constraint.bodyB.isStatic);
-
-            if (fixedA || fixedB) {
-                Constraint.solve(constraints[i], timeScale);
-            }
-        }
-
-        // Solve free constraints last.
-        for (i = 0; i < constraints.length; i += 1) {
-            constraint = constraints[i];
-            fixedA = !constraint.bodyA || (constraint.bodyA && constraint.bodyA.isStatic);
-            fixedB = !constraint.bodyB || (constraint.bodyB && constraint.bodyB.isStatic);
-
-            if (!fixedA && !fixedB) {
-                Constraint.solve(constraints[i], timeScale);
-            }
-        }
-    };
-
-    /**
-     * Solves a distance constraint with Gauss-Siedel method.
-     * @private
-     * @method solve
-     * @param {constraint} constraint
-     * @param {number} timeScale
-     */
-    Constraint.solve = function(constraint, timeScale) {
-        var bodyA = constraint.bodyA,
-            bodyB = constraint.bodyB,
-            pointA = constraint.pointA,
-            pointB = constraint.pointB;
-
-        if (!bodyA && !bodyB)
-            return;
-
-        // update reference angle
-        if (bodyA && !bodyA.isStatic) {
-            Vector.rotate(pointA, bodyA.angle - constraint.angleA, pointA);
-            constraint.angleA = bodyA.angle;
-        }
-        
-        // update reference angle
-        if (bodyB && !bodyB.isStatic) {
-            Vector.rotate(pointB, bodyB.angle - constraint.angleB, pointB);
-            constraint.angleB = bodyB.angle;
-        }
-
-        var pointAWorld = pointA,
-            pointBWorld = pointB;
-
-        if (bodyA) pointAWorld = Vector.add(bodyA.position, pointA);
-        if (bodyB) pointBWorld = Vector.add(bodyB.position, pointB);
-
-        if (!pointAWorld || !pointBWorld)
-            return;
-
-        var delta = Vector.sub(pointAWorld, pointBWorld),
-            currentLength = Vector.magnitude(delta);
-
-        // prevent singularity
-        if (currentLength < Constraint._minLength) {
-            currentLength = Constraint._minLength;
-        }
-
-        // solve distance constraint with Gauss-Siedel method
-        var difference = (currentLength - constraint.length) / currentLength,
-            stiffness = constraint.stiffness < 1 ? constraint.stiffness * timeScale : constraint.stiffness,
-            force = Vector.mult(delta, difference * stiffness),
-            massTotal = (bodyA ? bodyA.inverseMass : 0) + (bodyB ? bodyB.inverseMass : 0),
-            inertiaTotal = (bodyA ? bodyA.inverseInertia : 0) + (bodyB ? bodyB.inverseInertia : 0),
-            resistanceTotal = massTotal + inertiaTotal,
-            torque,
-            share,
-            normal,
-            normalVelocity,
-            relativeVelocity;
-
-        if (constraint.damping) {
-            var zero = Vector.create();
-            normal = Vector.div(delta, currentLength);
-
-            relativeVelocity = Vector.sub(
-                bodyB && Vector.sub(bodyB.position, bodyB.positionPrev) || zero,
-                bodyA && Vector.sub(bodyA.position, bodyA.positionPrev) || zero
-            );
-
-            normalVelocity = Vector.dot(normal, relativeVelocity);
-        }
-
-        if (bodyA && !bodyA.isStatic) {
-            share = bodyA.inverseMass / massTotal;
-
-            // keep track of applied impulses for post solving
-            bodyA.constraintImpulse.x -= force.x * share;
-            bodyA.constraintImpulse.y -= force.y * share;
-
-            // apply forces
-            bodyA.position.x -= force.x * share;
-            bodyA.position.y -= force.y * share;
-
-            // apply damping
-            if (constraint.damping) {
-                bodyA.positionPrev.x -= constraint.damping * normal.x * normalVelocity * share;
-                bodyA.positionPrev.y -= constraint.damping * normal.y * normalVelocity * share;
-            }
-
-            // apply torque
-            torque = (Vector.cross(pointA, force) / resistanceTotal) * Constraint._torqueDampen * bodyA.inverseInertia * (1 - constraint.angularStiffness);
-            bodyA.constraintImpulse.angle -= torque;
-            bodyA.angle -= torque;
-        }
-
-        if (bodyB && !bodyB.isStatic) {
-            share = bodyB.inverseMass / massTotal;
-
-            // keep track of applied impulses for post solving
-            bodyB.constraintImpulse.x += force.x * share;
-            bodyB.constraintImpulse.y += force.y * share;
-            
-            // apply forces
-            bodyB.position.x += force.x * share;
-            bodyB.position.y += force.y * share;
-
-            // apply damping
-            if (constraint.damping) {
-                bodyB.positionPrev.x += constraint.damping * normal.x * normalVelocity * share;
-                bodyB.positionPrev.y += constraint.damping * normal.y * normalVelocity * share;
-            }
-
-            // apply torque
-            torque = (Vector.cross(pointB, force) / resistanceTotal) * Constraint._torqueDampen * bodyB.inverseInertia * (1 - constraint.angularStiffness);
-            bodyB.constraintImpulse.angle += torque;
-            bodyB.angle += torque;
-        }
-
-    };
-
-    /**
-     * Performs body updates required after solving constraints.
-     * @private
-     * @method postSolveAll
-     * @param {body[]} bodies
-     */
-    Constraint.postSolveAll = function(bodies) {
-        for (var i = 0; i < bodies.length; i++) {
-            var body = bodies[i],
-                impulse = body.constraintImpulse;
-
-            if (body.isStatic || (impulse.x === 0 && impulse.y === 0 && impulse.angle === 0)) {
-                continue;
-            }
-
-            Sleeping.set(body, false);
-
-            // update geometry and reset
-            for (var j = 0; j < body.parts.length; j++) {
-                var part = body.parts[j];
-                
-                Vertices.translate(part.vertices, impulse);
-
-                if (j > 0) {
-                    part.position.x += impulse.x;
-                    part.position.y += impulse.y;
-                }
-
-                if (impulse.angle !== 0) {
-                    Vertices.rotate(part.vertices, impulse.angle, body.position);
-                    Axes.rotate(part.axes, impulse.angle);
-                    if (j > 0) {
-                        Vector.rotateAbout(part.position, impulse.angle, body.position, part.position);
-                    }
-                }
-
-                Bounds.update(part.bounds, part.vertices, body.velocity);
-            }
-
-            // dampen the cached impulse for warming next step
-            impulse.angle *= Constraint._warming;
-            impulse.x *= Constraint._warming;
-            impulse.y *= Constraint._warming;
-        }
-    };
-
-    /**
-     * Returns the world-space position of `constraint.pointA`, accounting for `constraint.bodyA`.
-     * @method pointAWorld
-     * @param {constraint} constraint
-     * @returns {vector} the world-space position
-     */
-    Constraint.pointAWorld = function(constraint) {
-        return {
-            x: (constraint.bodyA ? constraint.bodyA.position.x : 0) + constraint.pointA.x,
-            y: (constraint.bodyA ? constraint.bodyA.position.y : 0) + constraint.pointA.y
-        };
-    };
-
-    /**
-     * Returns the world-space position of `constraint.pointB`, accounting for `constraint.bodyB`.
-     * @method pointBWorld
-     * @param {constraint} constraint
-     * @returns {vector} the world-space position
-     */
-    Constraint.pointBWorld = function(constraint) {
-        return {
-            x: (constraint.bodyB ? constraint.bodyB.position.x : 0) + constraint.pointB.x,
-            y: (constraint.bodyB ? constraint.bodyB.position.y : 0) + constraint.pointB.y
-        };
-    };
-
-    /*
-    *
-    *  Properties Documentation
-    *
-    */
-
-    /**
-     * An integer `Number` uniquely identifying number generated in `Composite.create` by `Common.nextId`.
-     *
-     * @property id
-     * @type number
-     */
-
-    /**
-     * A `String` denoting the type of object.
-     *
-     * @property type
-     * @type string
-     * @default "constraint"
-     * @readOnly
-     */
-
-    /**
-     * An arbitrary `String` name to help the user identify and manage bodies.
-     *
-     * @property label
-     * @type string
-     * @default "Constraint"
-     */
-
-    /**
-     * An `Object` that defines the rendering properties to be consumed by the module `Matter.Render`.
-     *
-     * @property render
-     * @type object
-     */
-
-    /**
-     * A flag that indicates if the constraint should be rendered.
-     *
-     * @property render.visible
-     * @type boolean
-     * @default true
-     */
-
-    /**
-     * A `Number` that defines the line width to use when rendering the constraint outline.
-     * A value of `0` means no outline will be rendered.
-     *
-     * @property render.lineWidth
-     * @type number
-     * @default 2
-     */
-
-    /**
-     * A `String` that defines the stroke style to use when rendering the constraint outline.
-     * It is the same as when using a canvas, so it accepts CSS style property values.
-     *
-     * @property render.strokeStyle
-     * @type string
-     * @default a random colour
-     */
-
-    /**
-     * A `String` that defines the constraint rendering type. 
-     * The possible values are 'line', 'pin', 'spring'.
-     * An appropriate render type will be automatically chosen unless one is given in options.
-     *
-     * @property render.type
-     * @type string
-     * @default 'line'
-     */
-
-    /**
-     * A `Boolean` that defines if the constraint's anchor points should be rendered.
-     *
-     * @property render.anchors
-     * @type boolean
-     * @default true
-     */
-
-    /**
-     * The first possible `Body` that this constraint is attached to.
-     *
-     * @property bodyA
-     * @type body
-     * @default null
-     */
-
-    /**
-     * The second possible `Body` that this constraint is attached to.
-     *
-     * @property bodyB
-     * @type body
-     * @default null
-     */
-
-    /**
-     * A `Vector` that specifies the offset of the constraint from center of the `constraint.bodyA` if defined, otherwise a world-space position.
-     *
-     * @property pointA
-     * @type vector
-     * @default { x: 0, y: 0 }
-     */
-
-    /**
-     * A `Vector` that specifies the offset of the constraint from center of the `constraint.bodyB` if defined, otherwise a world-space position.
-     *
-     * @property pointB
-     * @type vector
-     * @default { x: 0, y: 0 }
-     */
-
-    /**
-     * A `Number` that specifies the stiffness of the constraint, i.e. the rate at which it returns to its resting `constraint.length`.
-     * A value of `1` means the constraint should be very stiff.
-     * A value of `0.2` means the constraint acts like a soft spring.
-     *
-     * @property stiffness
-     * @type number
-     * @default 1
-     */
-
-    /**
-     * A `Number` that specifies the damping of the constraint, 
-     * i.e. the amount of resistance applied to each body based on their velocities to limit the amount of oscillation.
-     * Damping will only be apparent when the constraint also has a very low `stiffness`.
-     * A value of `0.1` means the constraint will apply heavy damping, resulting in little to no oscillation.
-     * A value of `0` means the constraint will apply no damping.
-     *
-     * @property damping
-     * @type number
-     * @default 0
-     */
-
-    /**
-     * A `Number` that specifies the target resting length of the constraint. 
-     * It is calculated automatically in `Constraint.create` from initial positions of the `constraint.bodyA` and `constraint.bodyB`.
-     *
-     * @property length
-     * @type number
-     */
-
-    /**
-     * An object reserved for storing plugin-specific properties.
-     *
-     * @property plugin
-     * @type {}
-     */
-
-})();
-
+//REMOVED Constraints
 
 /***/ }),
 /* 9 */
@@ -5940,88 +5460,7 @@ var Mouse = __webpack_require__(12);
      * @param {bool} [center=true]
      */
     Render.lookAt = function(render, objects, padding, center) {
-        center = typeof center !== 'undefined' ? center : true;
-        objects = Common.isArray(objects) ? objects : [objects];
-        padding = padding || {
-            x: 0,
-            y: 0
-        };
-
-        // find bounds of all objects
-        var bounds = {
-            min: { x: Infinity, y: Infinity },
-            max: { x: -Infinity, y: -Infinity }
-        };
-
-        for (var i = 0; i < objects.length; i += 1) {
-            var object = objects[i],
-                min = object.bounds ? object.bounds.min : (object.min || object.position || object),
-                max = object.bounds ? object.bounds.max : (object.max || object.position || object);
-
-            if (min && max) {
-                if (min.x < bounds.min.x)
-                    bounds.min.x = min.x;
-
-                if (max.x > bounds.max.x)
-                    bounds.max.x = max.x;
-
-                if (min.y < bounds.min.y)
-                    bounds.min.y = min.y;
-
-                if (max.y > bounds.max.y)
-                    bounds.max.y = max.y;
-            }
-        }
-
-        // find ratios
-        var width = (bounds.max.x - bounds.min.x) + 2 * padding.x,
-            height = (bounds.max.y - bounds.min.y) + 2 * padding.y,
-            viewHeight = render.canvas.height,
-            viewWidth = render.canvas.width,
-            outerRatio = viewWidth / viewHeight,
-            innerRatio = width / height,
-            scaleX = 1,
-            scaleY = 1;
-
-        // find scale factor
-        if (innerRatio > outerRatio) {
-            scaleY = innerRatio / outerRatio;
-        } else {
-            scaleX = outerRatio / innerRatio;
-        }
-
-        // enable bounds
-        render.options.hasBounds = true;
-
-        // position and size
-        render.bounds.min.x = bounds.min.x;
-        render.bounds.max.x = bounds.min.x + width * scaleX;
-        render.bounds.min.y = bounds.min.y;
-        render.bounds.max.y = bounds.min.y + height * scaleY;
-
-        // center
-        if (center) {
-            render.bounds.min.x += width * 0.5 - (width * scaleX) * 0.5;
-            render.bounds.max.x += width * 0.5 - (width * scaleX) * 0.5;
-            render.bounds.min.y += height * 0.5 - (height * scaleY) * 0.5;
-            render.bounds.max.y += height * 0.5 - (height * scaleY) * 0.5;
-        }
-
-        // padding
-        render.bounds.min.x -= padding.x;
-        render.bounds.max.x -= padding.x;
-        render.bounds.min.y -= padding.y;
-        render.bounds.max.y -= padding.y;
-
-        // update mouse
-        if (render.mouse) {
-            Mouse.setScale(render.mouse, {
-                x: (render.bounds.max.x - render.bounds.min.x) / render.canvas.width,
-                y: (render.bounds.max.y - render.bounds.min.y) / render.canvas.height
-            });
-
-            Mouse.setOffset(render.mouse, render.bounds.min);
-        }
+        //REMOVED
     };
 
     /**
@@ -6201,50 +5640,6 @@ var Mouse = __webpack_require__(12);
      * @param {Number} time
      */
     Render.stats = function(render, context, time) {
-        var engine = render.engine,
-            world = engine.world,
-            bodies = Composite.allBodies(world),
-            parts = 0,
-            width = 55,
-            height = 44,
-            x = 0,
-            y = 0;
-        
-        // count parts
-        for (var i = 0; i < bodies.length; i += 1) {
-            parts += bodies[i].parts.length;
-        }
-
-        // sections
-        var sections = {
-            'Part': parts,
-            'Body': bodies.length,
-            'Cons': Composite.allConstraints(world).length,
-            'Comp': Composite.allComposites(world).length,
-            'Pair': engine.pairs.list.length
-        };
-
-        // background
-        context.fillStyle = '#0e0f19';
-        context.fillRect(x, y, width * 5.5, height);
-
-        context.font = '12px Arial';
-        context.textBaseline = 'top';
-        context.textAlign = 'right';
-
-        // sections
-        for (var key in sections) {
-            var section = sections[key];
-            // label
-            context.fillStyle = '#aaa';
-            context.fillText(key, x + width, y + 8);
-
-            // value
-            context.fillStyle = '#eee';
-            context.fillText(section, x + width, y + 26);
-
-            x += width;
-        }
     };
 
     /**
@@ -6255,73 +5650,6 @@ var Mouse = __webpack_require__(12);
      * @param {RenderingContext} context
      */
     Render.performance = function(render, context) {
-        var engine = render.engine,
-            timing = render.timing,
-            deltaHistory = timing.deltaHistory,
-            elapsedHistory = timing.elapsedHistory,
-            timestampElapsedHistory = timing.timestampElapsedHistory,
-            engineDeltaHistory = timing.engineDeltaHistory,
-            engineElapsedHistory = timing.engineElapsedHistory,
-            lastEngineDelta = engine.timing.lastDelta;
-        
-        var deltaMean = _mean(deltaHistory),
-            elapsedMean = _mean(elapsedHistory),
-            engineDeltaMean = _mean(engineDeltaHistory),
-            engineElapsedMean = _mean(engineElapsedHistory),
-            timestampElapsedMean = _mean(timestampElapsedHistory),
-            rateMean = (timestampElapsedMean / deltaMean) || 0,
-            fps = (1000 / deltaMean) || 0;
-
-        var graphHeight = 4,
-            gap = 12,
-            width = 60,
-            height = 34,
-            x = 10,
-            y = 69;
-
-        // background
-        context.fillStyle = '#0e0f19';
-        context.fillRect(0, 50, gap * 4 + width * 5 + 22, height);
-
-        // show FPS
-        Render.status(
-            context, x, y, width, graphHeight, deltaHistory.length, 
-            Math.round(fps) + ' fps', 
-            fps / Render._goodFps,
-            function(i) { return (deltaHistory[i] / deltaMean) - 1; }
-        );
-
-        // show engine delta
-        Render.status(
-            context, x + gap + width, y, width, graphHeight, engineDeltaHistory.length,
-            lastEngineDelta.toFixed(2) + ' dt', 
-            Render._goodDelta / lastEngineDelta,
-            function(i) { return (engineDeltaHistory[i] / engineDeltaMean) - 1; }
-        );
-
-        // show engine update time
-        Render.status(
-            context, x + (gap + width) * 2, y, width, graphHeight, engineElapsedHistory.length,
-            engineElapsedMean.toFixed(2) + ' ut', 
-            1 - (engineElapsedMean / Render._goodFps),
-            function(i) { return (engineElapsedHistory[i] / engineElapsedMean) - 1; }
-        );
-
-        // show render time
-        Render.status(
-            context, x + (gap + width) * 3, y, width, graphHeight, elapsedHistory.length,
-            elapsedMean.toFixed(2) + ' rt', 
-            1 - (elapsedMean / Render._goodFps),
-            function(i) { return (elapsedHistory[i] / elapsedMean) - 1; }
-        );
-
-        // show effective speed
-        Render.status(
-            context, x + (gap + width) * 4, y, width, graphHeight, timestampElapsedHistory.length, 
-            rateMean.toFixed(2) + ' x', 
-            rateMean * rateMean * rateMean,
-            function(i) { return (((timestampElapsedHistory[i] / deltaHistory[i]) / rateMean) || 0) - 1; }
-        );
     };
 
     /**
@@ -6339,30 +5667,7 @@ var Mouse = __webpack_require__(12);
      * @param {function} plotY
      */
     Render.status = function(context, x, y, width, height, count, label, indicator, plotY) {
-        // background
-        context.strokeStyle = '#888';
-        context.fillStyle = '#444';
-        context.lineWidth = 1;
-        context.fillRect(x, y + 7, width, 1);
 
-        // chart
-        context.beginPath();
-        context.moveTo(x, y + 7 - height * Common.clamp(0.4 * plotY(0), -2, 2));
-        for (var i = 0; i < width; i += 1) {
-            context.lineTo(x + i, y + 7 - (i < count ? height * Common.clamp(0.4 * plotY(i), -2, 2) : 0));
-        }
-        context.stroke();
-
-        // indicator
-        context.fillStyle = 'hsl(' + Common.clamp(25 + 95 * indicator, 0, 120) + ',100%,60%)';
-        context.fillRect(x, y - 7, 4, 4);
-
-        // label
-        context.font = '12px Arial';
-        context.textBaseline = 'middle';
-        context.textAlign = 'right';
-        context.fillStyle = '#eee';
-        context.fillText(label, x + width, y - 5);
     };
 
     /**
@@ -6373,73 +5678,7 @@ var Mouse = __webpack_require__(12);
      * @param {RenderingContext} context
      */
     Render.constraints = function(constraints, context) {
-        var c = context;
-
-        for (var i = 0; i < constraints.length; i++) {
-            var constraint = constraints[i];
-
-            if (!constraint.render.visible || !constraint.pointA || !constraint.pointB)
-                continue;
-
-            var bodyA = constraint.bodyA,
-                bodyB = constraint.bodyB,
-                start,
-                end;
-
-            if (bodyA) {
-                start = Vector.add(bodyA.position, constraint.pointA);
-            } else {
-                start = constraint.pointA;
-            }
-
-            if (constraint.render.type === 'pin') {
-                c.beginPath();
-                c.arc(start.x, start.y, 3, 0, 2 * Math.PI);
-                c.closePath();
-            } else {
-                if (bodyB) {
-                    end = Vector.add(bodyB.position, constraint.pointB);
-                } else {
-                    end = constraint.pointB;
-                }
-
-                c.beginPath();
-                c.moveTo(start.x, start.y);
-
-                if (constraint.render.type === 'spring') {
-                    var delta = Vector.sub(end, start),
-                        normal = Vector.perp(Vector.normalise(delta)),
-                        coils = Math.ceil(Common.clamp(constraint.length / 5, 12, 20)),
-                        offset;
-
-                    for (var j = 1; j < coils; j += 1) {
-                        offset = j % 2 === 0 ? 1 : -1;
-
-                        c.lineTo(
-                            start.x + delta.x * (j / coils) + normal.x * offset * 4,
-                            start.y + delta.y * (j / coils) + normal.y * offset * 4
-                        );
-                    }
-                }
-
-                c.lineTo(end.x, end.y);
-            }
-
-            if (constraint.render.lineWidth) {
-                c.lineWidth = constraint.render.lineWidth;
-                c.strokeStyle = constraint.render.strokeStyle;
-                c.stroke();
-            }
-
-            if (constraint.render.anchors) {
-                c.fillStyle = constraint.render.strokeStyle;
-                c.beginPath();
-                c.arc(start.x, start.y, 3, 0, 2 * Math.PI);
-                c.arc(end.x, end.y, 3, 0, 2 * Math.PI);
-                c.closePath();
-                c.fill();
-            }
-        }
+            //REMOVED
     };
 
     /**
@@ -7785,11 +7024,11 @@ var Body = __webpack_require__(6);
         Engine._bodiesUpdate(allBodies, delta, timing.timeScale, correction, world.bounds);
 
         // update all constraints (first pass)
-        Constraint.preSolveAll(allBodies);
+        /*Constraint.preSolveAll(allBodies);
         for (i = 0; i < engine.constraintIterations; i++) {
             Constraint.solveAll(allConstraints, timing.timeScale);
         }
-        Constraint.postSolveAll(allBodies);
+        Constraint.postSolveAll(allBodies);*/
 
         // broadphase pass: find potential collision pairs
 
@@ -7831,11 +7070,11 @@ var Body = __webpack_require__(6);
         Resolver.postSolvePosition(allBodies);
 
         // update all constraints (second pass)
-        Constraint.preSolveAll(allBodies);
+        /*Constraint.preSolveAll(allBodies);
         for (i = 0; i < engine.constraintIterations; i++) {
             Constraint.solveAll(allConstraints, timing.timeScale);
         }
-        Constraint.postSolveAll(allBodies);
+        Constraint.postSolveAll(allBodies);*/
 
         // iteratively resolve velocity between collisions
         Resolver.preSolveVelocity(pairs.list);
@@ -9022,7 +8261,6 @@ Matter.Body = __webpack_require__(6);
 Matter.Bounds = __webpack_require__(1);
 Matter.Common = __webpack_require__(0);
 Matter.Composite = __webpack_require__(5);
-Matter.Composites = __webpack_require__(24);
 Matter.Constraint = __webpack_require__(8);
 Matter.Contact = __webpack_require__(17);
 Matter.Detector = __webpack_require__(13);
@@ -9030,23 +8268,19 @@ Matter.Engine = __webpack_require__(18);
 Matter.Events = __webpack_require__(4);
 Matter.Grid = __webpack_require__(21);
 Matter.Mouse = __webpack_require__(12);
-Matter.MouseConstraint = __webpack_require__(25);
 Matter.Pair = __webpack_require__(9);
 Matter.Pairs = __webpack_require__(20);
 Matter.Plugin = __webpack_require__(15);
 Matter.Query = __webpack_require__(26);
 Matter.Render = __webpack_require__(16);
 Matter.Resolver = __webpack_require__(19);
-Matter.Runner = __webpack_require__(27);
 Matter.SAT = __webpack_require__(14);
 Matter.Sleeping = __webpack_require__(7);
-Matter.Svg = __webpack_require__(28);
 Matter.Vector = __webpack_require__(2);
 Matter.Vertices = __webpack_require__(3);
-Matter.World = __webpack_require__(29);
 
 // temporary back compatibility
-Matter.Engine.run = Matter.Runner.run;
+//Matter.Engine.run = Matter.Runner.run;
 //Matter.Common.deprecated(Matter.Engine, 'run', 'Engine.run ➤ use Matter.Runner.run(engine) instead');
 
 
@@ -9170,44 +8404,7 @@ var Common = __webpack_require__(0);
 /***/ }),
 /* 29 */
 /***/ (function(module, exports, __webpack_require__) {
-
-/**
-* This module has now been replaced by `Matter.Composite`.
-*
-* All usage should be migrated to the equivalent functions found on `Matter.Composite`.
-* For example `World.add(world, body)` now becomes `Composite.add(world, body)`.
-*
-* The property `world.gravity` has been moved to `engine.gravity`.
-*
-* For back-compatibility purposes this module will remain as a direct alias to `Matter.Composite` in the short term during migration.
-* Eventually this alias module will be marked as deprecated and then later removed in a future release.
-*
-* @class World
-*/
-
-var World = {};
-
-module.exports = World;
-
-var Composite = __webpack_require__(5);
-var Common = __webpack_require__(0);
-
-(function() {
-
-    /**
-     * See above, aliases for back compatibility only
-     */
-    World.create = Composite.create;
-    World.add = Composite.add;
-    World.remove = Composite.remove;
-    World.clear = Composite.clear;
-    World.addComposite = Composite.addComposite;
-    World.addBody = Composite.addBody;
-    World.addConstraint = Composite.addConstraint;
-
-})();
-
-
+//REMOVED
 /***/ })
 /******/ ]);
 });
