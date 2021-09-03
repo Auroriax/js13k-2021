@@ -34,12 +34,20 @@ sBlock = [
     {x: -50, y: -25},
   ]
   
-  sParalellogram = [
+  sParalellogramL = [
     {x: 0, y: -25},
     {x: 20, y: -25},
     {x: 50, y: 25},
     {x: -20, y: 25},
     {x: -50, y: -25},
+  ]
+
+  sParalellogramR = [
+    {x: 0, y: -25},
+    {x: 50, y: -25},
+    {x: 20, y: 25},
+    {x: -50, y: 25},
+    {x: -20, y: -25},
   ]
   
   sLongBlock = [
@@ -49,11 +57,11 @@ sBlock = [
     {x: -50, y: 25},
   ]
   
-  const triScale = 1;
-  sTriangle = [
-    {x: 0, y: 40*triScale},
-    {x: 34.6* triScale, y: -20 * triScale},
-    {x: -34.6* triScale, y: -20* triScale}
+  sEquiTriangle = [
+    {x: 0, y: 40},
+    {x: 34.6, y: -20},
+    {x: -34.6, y: -20}
   ]
   
-  shapes = [sBlock, sTrapezium, sParalellogram, sLongBlock, sTriangle];
+ 
+shapes = [sBlock, sTrapezium, sParalellogramL, sParalellogramR, sLongBlock, sEquiTriangle];
