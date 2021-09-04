@@ -1780,14 +1780,8 @@ var Body = __webpack_require__(6);
 
                 Composite.addBody(composite, obj);
                 break;
-            case 'constraint':
-                Composite.addConstraint(composite, obj);
-                break;
             case 'composite':
                 Composite.addComposite(composite, obj);
-                break;
-            case 'mouseConstraint':
-                Composite.addConstraint(composite, obj.constraint);
                 break;
 
             }
@@ -1821,14 +1815,8 @@ var Body = __webpack_require__(6);
             case 'body':
                 Composite.removeBody(composite, obj, deep);
                 break;
-            case 'constraint':
-                Composite.removeConstraint(composite, obj, deep);
-                break;
             case 'composite':
                 Composite.removeComposite(composite, obj, deep);
-                break;
-            case 'mouseConstraint':
-                Composite.removeConstraint(composite, obj.constraint);
                 break;
 
             }
@@ -1947,58 +1935,6 @@ var Body = __webpack_require__(6);
     };
 
     /**
-     * Adds a constraint to the given composite.
-     * @private
-     * @method addConstraint
-     * @param {composite} composite
-     * @param {constraint} constraint
-     * @return {composite} The original composite with the constraint added
-     */
-    Composite.addConstraint = function(composite, constraint) {
-        composite.constraints.push(constraint);
-        Composite.setModified(composite, true, true, false);
-        return composite;
-    };
-
-    /**
-     * Removes a constraint from the given composite, and optionally searching its children recursively.
-     * @private
-     * @method removeConstraint
-     * @param {composite} composite
-     * @param {constraint} constraint
-     * @param {boolean} [deep=false]
-     * @return {composite} The original composite with the constraint removed
-     */
-    Composite.removeConstraint = function(composite, constraint, deep) {
-        var position = Common.indexOf(composite.constraints, constraint);
-        if (position !== -1) {
-            Composite.removeConstraintAt(composite, position);
-        }
-
-        if (deep) {
-            for (var i = 0; i < composite.composites.length; i++){
-                Composite.removeConstraint(composite.composites[i], constraint, true);
-            }
-        }
-
-        return composite;
-    };
-
-    /**
-     * Removes a body from the given composite.
-     * @private
-     * @method removeConstraintAt
-     * @param {composite} composite
-     * @param {number} position
-     * @return {composite} The original composite with the constraint removed
-     */
-    Composite.removeConstraintAt = function(composite, position) {
-        composite.constraints.splice(position, 1);
-        Composite.setModified(composite, true, true, false);
-        return composite;
-    };
-
-    /**
      * Removes all bodies, constraints and composites from the given composite.
      * Optionally clearing its children recursively.
      * @method clear
@@ -2042,21 +1978,6 @@ var Body = __webpack_require__(6);
     };
 
     /**
-     * Returns all constraints in the given composite, including all constraints in its children, recursively.
-     * @method allConstraints
-     * @param {composite} composite
-     * @return {constraint[]} All the constraints
-     */
-    Composite.allConstraints = function(composite) {
-        var constraints = [].concat(composite.constraints);
-
-        for (var i = 0; i < composite.composites.length; i++)
-            constraints = constraints.concat(Composite.allConstraints(composite.composites[i]));
-
-        return constraints;
-    };
-
-    /**
      * Returns all composites in the given composite, including all composites in its children, recursively.
      * @method allComposites
      * @param {composite} composite
@@ -2079,31 +2000,7 @@ var Body = __webpack_require__(6);
      * @param {string} type
      * @return {object} The requested object, if found
      */
-    Composite.get = function(composite, id, type) {
-        var objects,
-            object;
-
-        switch (type) {
-        case 'body':
-            objects = Composite.allBodies(composite);
-            break;
-        case 'constraint':
-            objects = Composite.allConstraints(composite);
-            break;
-        case 'composite':
-            objects = Composite.allComposites(composite).concat(composite);
-            break;
-        }
-
-        if (!objects)
-            return null;
-
-        object = objects.filter(function(object) { 
-            return object.id.toString() === id.toString(); 
-        });
-
-        return object.length === 0 ? null : object[0];
-    };
+    //REMOVED
 
     /**
      * Moves the given object(s) from compositeA to compositeB (equal to a remove followed by an add).
@@ -2113,11 +2010,7 @@ var Body = __webpack_require__(6);
      * @param {compositeB} compositeB
      * @return {composite} Returns compositeA
      */
-    Composite.move = function(compositeA, objects, compositeB) {
-        Composite.remove(compositeA, objects);
-        Composite.add(compositeB, objects);
-        return compositeA;
-    };
+    //REMOVED
 
     /**
      * Assigns new ids for all objects in the composite, recursively.
@@ -2125,19 +2018,7 @@ var Body = __webpack_require__(6);
      * @param {composite} composite
      * @return {composite} Returns composite
      */
-    Composite.rebase = function(composite) {
-        var objects = Composite.allBodies(composite)
-            .concat(Composite.allConstraints(composite))
-            .concat(Composite.allComposites(composite));
-
-        for (var i = 0; i < objects.length; i++) {
-            objects[i].id = Common.nextId();
-        }
-
-        Composite.setModified(composite, true, true, false);
-
-        return composite;
-    };
+    //REMOVED
 
     /**
      * Translates all children in the composite by a given vector relative to their current positions, 
@@ -2147,17 +2028,7 @@ var Body = __webpack_require__(6);
      * @param {vector} translation
      * @param {bool} [recursive=true]
      */
-    Composite.translate = function(composite, translation, recursive) {
-        var bodies = recursive ? Composite.allBodies(composite) : composite.bodies;
-
-        for (var i = 0; i < bodies.length; i++) {
-            Body.translate(bodies[i], translation);
-        }
-
-        Composite.setModified(composite, true, true, false);
-
-        return composite;
-    };
+    //REMOVED
 
     /**
      * Rotates all children in the composite by a given angle about the given point, without imparting any angular velocity.
@@ -2167,28 +2038,7 @@ var Body = __webpack_require__(6);
      * @param {vector} point
      * @param {bool} [recursive=true]
      */
-    Composite.rotate = function(composite, rotation, point, recursive) {
-        var cos = Math.cos(rotation),
-            sin = Math.sin(rotation),
-            bodies = recursive ? Composite.allBodies(composite) : composite.bodies;
-
-        for (var i = 0; i < bodies.length; i++) {
-            var body = bodies[i],
-                dx = body.position.x - point.x,
-                dy = body.position.y - point.y;
-                
-            Body.setPosition(body, {
-                x: point.x + (dx * cos - dy * sin),
-                y: point.y + (dx * sin + dy * cos)
-            });
-
-            Body.rotate(body, rotation);
-        }
-
-        Composite.setModified(composite, true, true, false);
-
-        return composite;
-    };
+    //REMOVED
 
     /**
      * Scales all children in the composite, including updating physical properties (mass, area, axes, inertia), from a world-space point.
@@ -2199,26 +2049,7 @@ var Body = __webpack_require__(6);
      * @param {vector} point
      * @param {bool} [recursive=true]
      */
-    Composite.scale = function(composite, scaleX, scaleY, point, recursive) {
-        var bodies = recursive ? Composite.allBodies(composite) : composite.bodies;
-
-        for (var i = 0; i < bodies.length; i++) {
-            var body = bodies[i],
-                dx = body.position.x - point.x,
-                dy = body.position.y - point.y;
-                
-            Body.setPosition(body, {
-                x: point.x + dx * scaleX,
-                y: point.y + dy * scaleY
-            });
-
-            Body.scale(body, scaleX, scaleY);
-        }
-
-        Composite.setModified(composite, true, true, false);
-
-        return composite;
-    };
+    //REMOVED
 
     /**
      * Returns the union of the bounds of all of the composite's bodies.
@@ -2226,17 +2057,7 @@ var Body = __webpack_require__(6);
      * @param {composite} composite The composite.
      * @returns {bounds} The composite bounds.
      */
-    Composite.bounds = function(composite) {
-        var bodies = Composite.allBodies(composite),
-            vertices = [];
-
-        for (var i = 0; i < bodies.length; i += 1) {
-            var body = bodies[i];
-            vertices.push(body.bounds.min, body.bounds.max);
-        }
-
-        return Bounds.create(vertices);
-    };
+    //REMOVED
 
     /*
     *
@@ -5507,7 +5328,7 @@ var Mouse = __webpack_require__(12);
             timing = render.timing;
 
         var allBodies = Composite.allBodies(world),
-            allConstraints = Composite.allConstraints(world),
+            //allConstraints = Composite.allConstraints(world),
             background = options.wireframes ? options.wireframeBackground : options.background,
             bodies = [],
             constraints = [],
@@ -5536,24 +5357,6 @@ var Mouse = __webpack_require__(12);
                 var body = allBodies[i];
                 if (Bounds.overlaps(body.bounds, render.bounds))
                     bodies.push(body);
-            }
-
-            // filter out constraints that are not in view
-            for (i = 0; i < allConstraints.length; i++) {
-                var constraint = allConstraints[i],
-                    bodyA = constraint.bodyA,
-                    bodyB = constraint.bodyB,
-                    pointAWorld = constraint.pointA,
-                    pointBWorld = constraint.pointB;
-
-                if (bodyA) pointAWorld = Vector.add(bodyA.position, constraint.pointA);
-                if (bodyB) pointBWorld = Vector.add(bodyB.position, constraint.pointB);
-
-                if (!pointAWorld || !pointBWorld)
-                    continue;
-
-                if (Bounds.contains(render.bounds, pointAWorld) || Bounds.contains(render.bounds, pointBWorld))
-                    constraints.push(constraint);
             }
 
             // transform the view
@@ -7010,8 +6813,8 @@ var Body = __webpack_require__(6);
         Events.trigger(engine, 'beforeUpdate', event);
 
         // get lists of all bodies and constraints, no matter what composites they are in
-        var allBodies = Composite.allBodies(world),
-            allConstraints = Composite.allConstraints(world);
+        var allBodies = Composite.allBodies(world);
+            //allConstraints = Composite.allConstraints(world);
 
         // if sleeping enabled, call the sleeping controller
         if (engine.enableSleeping)

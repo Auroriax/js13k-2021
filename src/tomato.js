@@ -161,8 +161,6 @@ class InputHandler {
 		}
 
 		this.prevHeldTime = this.heldTime;
-
-		//console.log("State: " + this.state + " Fired: " + this.timeSinceLastRefire);
 	}
 
 	reset() {
@@ -178,10 +176,6 @@ class InputHandler {
 }
 
 ///MISC
-function Clamp(nr, min, max) {
-	return Math.max(min, Math.min(nr, max));
-}
-
 function PushUnique(array, newEntry) {
 	var changed = false;
 	if (array.indexOf(newEntry) === -1) {
@@ -198,5 +192,3 @@ function SpliceUnique(array, EntryToSplice) {
 	}
 	return array;
 }
-
-//console.log("🍅 Tomato loaded successfully! Version 0.1.0");
