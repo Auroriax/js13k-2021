@@ -1,18 +1,19 @@
 //INIT
-Matter.use(
+
+var Engine = MTR.Engine,
+	Events = MTR.Events,
+	Render = MTR.Render,
+	Composite = MTR.Composite,
+	B = MTR.Body,
+	Mouse = MTR.Mouse,
+	Common = MTR.Common,
+	Bodies = MTR.Bodies,
+	Bounds = MTR.Bounds,
+	SAT = MTR.SAT;
+
+	MTR.use(
 	'matter-attractors'
 )
-
-var Engine = Matter.Engine,
-		Events = Matter.Events,
-		Render = Matter.Render,
-		Composite = Matter.Composite,
-		Body = Matter.Body,
-		Mouse = Matter.Mouse,
-		Common = Matter.Common,
-		Bodies = Matter.Bodies,
-		Bounds = Matter.Bounds,
-		SAT = Matter.SAT;
 
 // create engine
 var engine = Engine.create();
@@ -30,8 +31,6 @@ var render = Render.create({
 		wireframes: false,
 		hasBounds: true,
 		background: "#333333",
-
-		showPerformance: true
 	}
 });
 
@@ -39,13 +38,14 @@ var zoomLevel = 1;
 
 Render.run(render);
 
-world = engine.world;
+var world = engine.world;
 engine.gravity.scale = 0;
 
 // create a body with an attractor
-planet = Bodies.circle(
+var planet = Bodies.polygon(
 	0,
 	0,
+	100,
 	150, 
 	{
 	isStatic: true,
@@ -62,22 +62,21 @@ planet = Bodies.circle(
 			}
 		]
 	}
-},
-100
+}
 );
 
 planet.render.fillStyle = "#CD0E0E";
 Composite.add(world, planet);
 
-validationZone = Bodies.circle(
+var validationZone = Bodies.polygon(
 	0,
 	0,
-	450, 
+	100,
+	450,
 	{
 	isStatic: true,
 	isSensor: true
 },
-100
 );
 
 validationZone.render.fillStyle = "#00000000";
@@ -92,27 +91,28 @@ validationZone.render.lineWidth = 3;
 validationZone.render.opacity = 0.3;
 Composite.add(world, validationZone);
 
-mouse = Mouse.create(render.canvas);
+var mouse = Mouse.create(render.canvas);
 
 resize();
 mouse.position = {x: 0, y: -1};
 
-placedBlocks = [];
+var placedBlocks = [];
 
-previewVertices = randomFromArray(shapes);
-previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
+var previewVertices = randomFromArray(shapes);
+var previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
 
-hoverVertices = randomFromArray(shapes, previewVertices);
-hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
-hoverAngle = 0;
+var hoverVertices = randomFromArray(shapes, previewVertices);
+var hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
+var hoverAngle = 0;
 
 //Scatter stars
-stars = [];
+var stars = [];
 const RANGE = 1000;
 for (var i = 0; i != 100; i++) {
-	var body = Bodies.circle(
+	var body = Bodies.polygon(
 		planet.position.x + Common.random(-RANGE, RANGE),
 		planet.position.y + Common.random(-RANGE, RANGE),
+		Common.random(3,5),
 		Common.random(2,5)
 	);
 
@@ -144,14 +144,6 @@ function CreateSensor(x, y, ang, vertices, preview) {
 
 	body.render.lineWidth = 5;
 
-	/*for (var i = 0; i != body.parts.length; i++) {
-		body.parts[i].isSensor = true;
-		body.parts[i].isStatic = true;
-		body.parts[i].render.strokeStyle = "#dddddd";
-		body.parts[i].render.fillStyle = "#33333388";
-		body.parts[i].render.lineWidth = 5;
-	}*/
-
 	Composite.add(world, body);
 
 	return body;
@@ -162,7 +154,7 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 	var body = Bodies.fromVertices(x,y,vertexArray);
 
-	Body.setAngle(body, ang);
+	B.setAngle(body, ang);
 
 	body.friction = 0.125;
 	body.density = 0.005;
@@ -177,18 +169,18 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 //INPUT
 
-tRotateHoveredBlock = new Timer(0.15);
-prevRotation = 0;
-rotateAppend = 0;
+var tRotateHoveredBlock = new Timer(0.15);
+var prevRotation = 0;
+var rotateAppend = 0;
 
-tBlockPlacementCooldown = new Timer(2);
-tNewBlockSpawn = new Timer(1);
+var tBlockPlacementCooldown = new Timer(2);
+var tNewBlockSpawn = new Timer(1);
 
-kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
+var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 
 //UPDATE
 
-mouseDown = false;
+var mouseDown = false;
 Events.on(engine, 'beforeUpdate', function() {
 
 		var fps = 1 / 60;
@@ -202,7 +194,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		const rotateAngle = 0.0002;
 		for(var i = 0; i != stars.length; i++) {
 			var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, stars[i].position.x, stars[i].position.y, rotateAngle);
-			Body.setPosition(stars[i], newPos);
+			B.setPosition(stars[i], newPos);
 		}
 
 		if (!tRotateHoveredBlock.running) {
@@ -221,7 +213,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
 
 		if (previewBlock) {
-			Body.setPosition(previewBlock, previewBlockPos);
+			B.setPosition(previewBlock, previewBlockPos);
 		}
 
 		if (hoverPreview) {
@@ -236,8 +228,8 @@ Events.on(engine, 'beforeUpdate', function() {
 				previewBlock.render.opacity = .5 * progress;
 			}
 
-			Body.setPosition(hoverPreview, position);
-			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			B.setPosition(hoverPreview, position);
+			B.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
 			);
 
@@ -278,7 +270,7 @@ Events.on(engine, 'beforeUpdate', function() {
 			previewBlock.render.opacity = 0;
 			hoverAngle = 0;
 
-			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			B.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
 			tNewBlockSpawn.start();
@@ -367,4 +359,4 @@ function EaseInOut(t) {
 console.log("Todo:\n" 
 +"- Add level system then make levels\n"
 +"- Make planet DEADLY! & enfore validation (dotted ring around planet)\n"
-+"- Logo and menu screen. SMALL CAPS\n")
++"- Logo and menu screen. SMALL CAPS\n");
