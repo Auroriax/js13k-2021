@@ -1,7 +1,3 @@
-//INIT
-
-var	B = Body;
-
 // create engine
 var engine = Engine.create();
 
@@ -22,8 +18,6 @@ var render = Render.create({
 });
 
 var zoomLevel = 1;
-
-Render.run(render);
 
 var world = engine.world;
 engine.gravity.scale = 0;
@@ -96,62 +90,62 @@ var hoverAngle = 0;
 var stars = [];
 const RANGE = 1000;
 for (var i = 0; i != 100; i++) {
-	var body = Bodies.polygon(
+	var bod = Bodies.polygon(
 		planet.position.x + Common.random(-RANGE, RANGE),
 		planet.position.y + Common.random(-RANGE, RANGE),
 		Common.random(3,5),
 		Common.random(2,5)
 	);
 
-	body.isSensor = true;
-	body.isStatic = true;
-	body.render.strokeStyle = "#dddddd";
-	body.render.fillStyle = "#33333344";
-	body.render.lineWidth = 1;
-	body.collisionFilter.group = 1;
+	bod.isSensor = true;
+	bod.isStatic = true;
+	bod.render.strokeStyle = "#dddddd";
+	bod.render.fillStyle = "#33333344";
+	bod.render.lineWidth = 1;
+	bod.collisionFilter.group = 1;
 
-	Composite.add(world, body);
-	stars.push(body);
+	Composite.add(world, bod);
+	stars.push(bod);
 }
 
 function CreateSensor(x, y, ang, vertices, preview) {
 	console.log("Adding phantom block");
 
-	var body = Bodies.fromVertices(x,y,vertices);
+	var bod = Bodies.fromVertices(x,y,vertices);
 
-	body.isSensor = true;
-	body.isStatic = true;
+	bod.isSensor = true;
+	bod.isStatic = true;
 
-	body.render.strokeStyle = "#dddddd";
-	body.render.fillStyle = "#33333388";
+	bod.render.strokeStyle = "#dddddd";
+	bod.render.fillStyle = "#33333388";
 
 	if (preview) {
-		body.render.opacity = 0.5;
+		bod.render.opacity = 0.5;
 	}
 
-	body.render.lineWidth = 5;
+	bod.render.lineWidth = 5;
 
-	Composite.add(world, body);
+	Composite.add(world, bod);
 
-	return body;
+	return bod;
 }
 
 function CreateBlock(x, y, ang, vertexArray) {
 	console.log("Adding actual block");
 
-	var body = Bodies.fromVertices(x,y,vertexArray);
+	var bod = Bodies.fromVertices(x,y,vertexArray);
 
-	B.setAngle(body, ang);
+	Body.setAngle(bod, ang);
 
-	body.friction = 0.125;
-	body.density = 0.005;
+	bod.friction = 0.125;
+	bod.density = 0.005;
 
-	body.render.fillStyle = "#dddddd";
-	body.render.strokeStyle = "#333333";
-	body.render.lineWidth = 1; 
+	bod.render.fillStyle = "#dddddd";
+	bod.render.strokeStyle = "#333333";
+	bod.render.lineWidth = 1; 
 
-	placedBlocks.push(body);
-	Composite.add(world, body);
+	placedBlocks.push(bod);
+	Composite.add(world, bod);
 }
 
 //INPUT
@@ -181,7 +175,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		const rotateAngle = 0.0002;
 		for(var i = 0; i != stars.length; i++) {
 			var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, stars[i].position.x, stars[i].position.y, rotateAngle);
-			B.setPosition(stars[i], newPos);
+			Body.setPosition(stars[i], newPos);
 		}
 
 		if (!tRotateHoveredBlock.running) {
@@ -200,7 +194,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
 
 		if (previewBlock) {
-			B.setPosition(previewBlock, previewBlockPos);
+			Body.setPosition(previewBlock, previewBlockPos);
 		}
 
 		if (hoverPreview) {
@@ -215,8 +209,8 @@ Events.on(engine, 'beforeUpdate', function() {
 				previewBlock.render.opacity = .5 * progress;
 			}
 
-			B.setPosition(hoverPreview, position);
-			B.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			Body.setPosition(hoverPreview, position);
+			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
 			);
 
@@ -257,7 +251,7 @@ Events.on(engine, 'beforeUpdate', function() {
 			previewBlock.render.opacity = 0;
 			hoverAngle = 0;
 
-			B.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
 			tNewBlockSpawn.start();
@@ -279,6 +273,7 @@ function run() {
 	kRotate.update(1 / 30);
 
 	Engine.update(engine, 1000 / 30);
+	Render.world(render);
 };
 
 window.onresize = function() {
@@ -342,8 +337,3 @@ function EaseInOut(t) {
 	return(t*(2-t));
 }
 
-//TODO
-console.log("Todo:\n" 
-+"- Add level system then make levels\n"
-+"- Make planet DEADLY! & enfore validation (dotted ring around planet)\n"
-+"- Logo and menu screen. SMALL CAPS\n");

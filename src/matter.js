@@ -176,35 +176,6 @@ var _seededRandom = function () {
     return Common._seed / 233280;
 };
 
-Common.logLevel = 1;
-
-Common.log = function () {
-    if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
-        console.log.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
-    }
-};
-
-Common.info = function () {
-    if (console && Common.logLevel > 0 && Common.logLevel <= 2) {
-        console.info.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
-    }
-};
-
-Common.warn = function () {
-    if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
-        console.warn.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
-    }
-};
-
-Common.warnOnce = function () {
-    var message = Array.prototype.slice.call(arguments).join(' ');
-
-    if (!Common._warnedOnce[message]) {
-        Common.warn(message);
-        Common._warnedOnce[message] = true;
-    }
-};
-
 
 Common.nextId = function () {
     return Common._nextId++;
@@ -221,113 +192,6 @@ Common.indexOf = function (haystack, needle) {
     }
 
     return -1;
-};
-
-
-Common.map = function (list, func) {
-    if (list.map) {
-        return list.map(func);
-    }
-
-    var mapped = [];
-
-    for (var i = 0; i < list.length; i += 1) {
-        mapped.push(func(list[i]));
-    }
-
-    return mapped;
-};
-
-
-Common.topologicalSort = function (graph) {
-
-    var result = [],
-        visited = [],
-        temp = [];
-
-    for (var node in graph) {
-        if (!visited[node] && !temp[node]) {
-            Common._topologicalSort(node, visited, temp, graph, result);
-        }
-    }
-
-    return result;
-};
-
-Common._topologicalSort = function (node, visited, temp, graph, result) {
-    var neighbors = graph[node] || [];
-    temp[node] = true;
-
-    for (var i = 0; i < neighbors.length; i += 1) {
-        var neighbor = neighbors[i];
-
-        if (temp[neighbor]) {
-
-            continue;
-        }
-
-        if (!visited[neighbor]) {
-            Common._topologicalSort(neighbor, visited, temp, graph, result);
-        }
-    }
-
-    temp[node] = false;
-    visited[node] = true;
-
-    result.push(node);
-};
-
-Common.chain = function () {
-    var funcs = [];
-
-    for (var i = 0; i < arguments.length; i += 1) {
-        var func = arguments[i];
-
-        if (func._chained) {
-
-            funcs.push.apply(funcs, func._chained);
-        } else {
-            funcs.push(func);
-        }
-    }
-
-    var chain = function () {
-
-        var lastResult,
-            args = new Array(arguments.length);
-
-        for (var i = 0, l = arguments.length; i < l; i++) {
-            args[i] = arguments[i];
-        }
-
-        for (i = 0; i < funcs.length; i += 1) {
-            var result = funcs[i].apply(lastResult, args);
-
-            if (typeof result !== 'undefined') {
-                lastResult = result;
-            }
-        }
-
-        return lastResult;
-    };
-
-    chain._chained = funcs;
-
-    return chain;
-};
-
-Common.chainPathBefore = function (base, path, func) {
-    return Common.set(base, path, Common.chain(
-        func,
-        Common.get(base, path)
-    ));
-};
-
-Common.chainPathAfter = function (base, path, func) {
-    return Common.set(base, path, Common.chain(
-        Common.get(base, path),
-        func
-    ));
 };
 
 var Bounds = {};
@@ -648,8 +512,6 @@ Vertices.inertia = function (vertices, mass) {
         cross,
         j;
 
-
-
     for (var n = 0; n < v.length; n++) {
         j = (n + 1) % v.length;
         cross = Math.abs(Vector.cross(v[j], v[n]));
@@ -731,72 +593,6 @@ Vertices.scale = function (vertices, scaleX, scaleY, point) {
     return vertices;
 };
 
-
-Vertices.chamfer = function (vertices, radius, quality, qualityMin, qualityMax) {
-    if (typeof radius === 'number') {
-        radius = [radius];
-    } else {
-        radius = radius || [8];
-    }
-
-
-    quality = (typeof quality !== 'undefined') ? quality : -1;
-    qualityMin = qualityMin || 2;
-    qualityMax = qualityMax || 14;
-
-    var newVertices = [];
-
-    for (var i = 0; i < vertices.length; i++) {
-        var prevVertex = vertices[i - 1 >= 0 ? i - 1 : vertices.length - 1],
-            vertex = vertices[i],
-            nextVertex = vertices[(i + 1) % vertices.length],
-            currentRadius = radius[i < radius.length ? i : radius.length - 1];
-
-        if (currentRadius === 0) {
-            newVertices.push(vertex);
-            continue;
-        }
-
-        var prevNormal = Vector.normalise({
-            x: vertex.y - prevVertex.y,
-            y: prevVertex.x - vertex.x
-        });
-
-        var nextNormal = Vector.normalise({
-            x: nextVertex.y - vertex.y,
-            y: vertex.x - nextVertex.x
-        });
-
-        var diagonalRadius = Math.sqrt(2 * Math.pow(currentRadius, 2)),
-            radiusVector = Vector.mult(Common.clone(prevNormal), currentRadius),
-            midNormal = Vector.normalise(Vector.mult(Vector.add(prevNormal, nextNormal), 0.5)),
-            scaledVertex = Vector.sub(vertex, Vector.mult(midNormal, diagonalRadius));
-
-        var precision = quality;
-
-        if (quality === -1) {
-
-            precision = Math.pow(currentRadius, 0.32) * 1.75;
-        }
-
-        precision = Common.clamp(precision, qualityMin, qualityMax);
-
-
-        if (precision % 2 === 1)
-            precision += 1;
-
-        var alpha = Math.acos(Vector.dot(prevNormal, nextNormal)),
-            theta = alpha / precision;
-
-        for (var j = 0; j < precision; j++) {
-            newVertices.push(Vector.add(Vector.rotate(radiusVector, theta * j), scaledVertex));
-        }
-    }
-
-    return newVertices;
-};
-
-
 Vertices.clockwiseSort = function (vertices) {
     var centre = Vertices.mean(vertices);
 
@@ -821,35 +617,6 @@ Events.on = function (object, eventNames, callback) {
     }
 
     return callback;
-};
-
-Events.off = function (object, eventNames, callback) {
-    if (!eventNames) {
-        object.events = {};
-        return;
-    }
-
-
-    if (typeof eventNames === 'function') {
-        callback = eventNames;
-        eventNames = Common.keys(object.events).join(' ');
-    }
-
-    var names = eventNames.split(' ');
-
-    for (var i = 0; i < names.length; i++) {
-        var callbacks = object.events[names[i]],
-            newCallbacks = [];
-
-        if (callback && callbacks) {
-            for (var j = 0; j < callbacks.length; j++) {
-                if (callbacks[j] !== callback)
-                    newCallbacks.push(callbacks[j]);
-            }
-        }
-
-        object.events[names[i]] = newCallbacks;
-    }
 };
 
 Events.trigger = function (object, eventNames, event) {
@@ -930,7 +697,6 @@ Composite.add = function (composite, object) {
             case 'body':
 
                 if (obj.parent !== obj) {
-                    Common.warn('Composite.add: skipped adding a compound body part (you must add its parent instead)');
                     break;
                 }
 
@@ -1170,13 +936,13 @@ Body.create = function (options) {
         _original: null
     };
 
-    var body = Common.extend(defaults, options);
+    var bod = Common.extend(defaults, options);
 
-    _initProperties(body, options);
+    _initProperties(bod, options);
 
-    MatterAttractors.Body.init(body);
+    MatterAttractors.init(bod);
 
-    return body;
+    return bod;
 };
 
 var _initProperties = function (body, options) {
@@ -1207,9 +973,9 @@ var _initProperties = function (body, options) {
     });
 
 
-    var defaultFillStyle = (body.isStatic ? '#14151f' : Common.choose(['#f19648', '#f5d259', '#f55a3c', '#063e7b', '#ececd1'])),
-        defaultStrokeStyle = body.isStatic ? '#555' : '#ccc',
-        defaultLineWidth = body.isStatic && body.render.fillStyle === null ? 1 : 0;
+    var defaultFillStyle = '#14151f',
+        defaultStrokeStyle = '#555',
+        defaultLineWidth = 0;
     body.render.fillStyle = body.render.fillStyle || defaultFillStyle;
     body.render.strokeStyle = body.render.strokeStyle || defaultStrokeStyle;
     body.render.lineWidth = body.render.lineWidth || defaultLineWidth;
@@ -1369,7 +1135,7 @@ Body.setVertices = function (body, vertices) {
 };
 
 
-Body.setParts = function (body, parts, autoHull) {
+Body.setParts = function (body, parts) {
     var i;
 
 
@@ -1385,11 +1151,6 @@ Body.setParts = function (body, parts, autoHull) {
             body.parts.push(part);
         }
     }
-
-    if (body.parts.length === 1)
-        return;
-
-    //REMOVED
 };
 
 
@@ -1615,28 +1376,28 @@ Sleeping.update = function (bodies, timeScale) {
 
 
     for (var i = 0; i < bodies.length; i++) {
-        var body = bodies[i],
-            motion = body.speed * body.speed + body.angularSpeed * body.angularSpeed;
+        var bod = bodies[i],
+            motion = bod.speed * bod.speed + bod.angularSpeed * bod.angularSpeed;
 
 
-        if (body.force.x !== 0 || body.force.y !== 0) {
-            Sleeping.set(body, false);
+        if (bod.force.x !== 0 || bod.force.y !== 0) {
+            Sleeping.set(bod, false);
             continue;
         }
 
-        var minMotion = Math.min(body.motion, motion),
-            maxMotion = Math.max(body.motion, motion);
+        var minMotion = Math.min(bod.motion, motion),
+            maxMotion = Math.max(bod.motion, motion);
 
 
-        body.motion = Sleeping._minBias * minMotion + (1 - Sleeping._minBias) * maxMotion;
+            bod.motion = Sleeping._minBias * minMotion + (1 - Sleeping._minBias) * maxMotion;
 
-        if (body.sleepThreshold > 0 && body.motion < Sleeping._motionSleepThreshold * timeFactor) {
-            body.sleepCounter += 1;
+        if (bod.sleepThreshold > 0 && bod.motion < Sleeping._motionSleepThreshold * timeFactor) {
+            bod.sleepCounter += 1;
 
-            if (body.sleepCounter >= body.sleepThreshold)
-                Sleeping.set(body, true);
-        } else if (body.sleepCounter > 0) {
-            body.sleepCounter -= 1;
+            if (bod.sleepCounter >= bod.sleepThreshold)
+                Sleeping.set(bod, true);
+        } else if (bod.sleepCounter > 0) {
+            bod.sleepCounter -= 1;
         }
     }
 };
@@ -1816,7 +1577,6 @@ Axes.fromVertices = function (vertices) {
     return Common.values(axes);
 };
 
-
 Axes.rotate = function (axes, angle) {
     if (angle === 0)
         return;
@@ -1881,13 +1641,6 @@ Bodies.polygon = function (x, y, sides, radius, options) {
         },
         vertices: Vertices.fromPath(path)
     };
-
-    if (options.chamfer) {
-        var chamfer = options.chamfer;
-        polygon.vertices = Vertices.chamfer(polygon.vertices, chamfer.radius,
-            chamfer.quality, chamfer.qualityMin, chamfer.qualityMax);
-        delete options.chamfer;
-    }
 
     return Body.create(Common.extend({}, polygon, options));
 };
@@ -1991,10 +1744,6 @@ var Mouse = {};
 
 Mouse.create = function (element) {
     var mouse = {};
-
-    if (!element) {
-        Common.log('Mouse.create: element was undefined, defaulting to document.body', 'warn');
-    }
 
     mouse.element = element || document.body;
     mouse.absolute = {
@@ -2423,7 +2172,6 @@ SAT._findSupports = function (bodyA, bodyB, normal) {
         }
     }
 
-
     var prevIndex = vertexA.index - 1 >= 0 ? vertexA.index - 1 : vertices.length - 1;
     vertex = vertices[prevIndex];
     vertexToBody.x = vertex.x - bodyAPosition.x;
@@ -2444,25 +2192,6 @@ SAT._findSupports = function (bodyA, bodyB, normal) {
 };
 
 var Render = {};
-
-var _requestAnimationFrame,
-    _cancelAnimationFrame;
-
-if (typeof window !== 'undefined') {
-    _requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame || window.msRequestAnimationFrame ||
-        function (callback) {
-            window.setTimeout(function () {
-                callback(Common.now());
-            }, 1000 / 60);
-        };
-
-    _cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame ||
-        window.webkitCancelAnimationFrame || window.msCancelAnimationFrame;
-}
-
-Render._goodFps = 30;
-Render._goodDelta = 1000 / 60;
 
 Render.create = function (options) {
     var defaults = {
@@ -2506,7 +2235,7 @@ Render.create = function (options) {
 
     render.mouse = options.mouse;
     render.engine = options.engine;
-    render.canvas = render.canvas || _createCanvas(render.options.width, render.options.height);
+    render.canvas = render.canvas;
     render.context = render.canvas.getContext('2d');
 
     render.bounds = render.bounds || {
@@ -2522,25 +2251,9 @@ Render.create = function (options) {
 
     if (Common.isElement(render.element)) {
         render.element.appendChild(render.canvas);
-    } else if (!render.canvas.parentNode) {
-        Common.log('Render.create: options.element was undefined, render.canvas was created but not appended', 'warn');
     }
 
     return render;
-};
-
-Render.run = function (render) {
-    (function loop(time) {
-        render.frameRequestId = _requestAnimationFrame(loop);
-
-        _updateTiming(render, time);
-
-        Render.world(render, time);
-    })();
-};
-
-Render.stop = function (render) {
-    _cancelAnimationFrame(render.frameRequestId);
 };
 
 Render.startViewTransform = function (render) {
@@ -2596,9 +2309,9 @@ Render.world = function (render, time) {
     if (options.hasBounds) {
 
         for (i = 0; i < allBodies.length; i++) {
-            var body = allBodies[i];
-            if (Bounds.overlaps(body.bounds, render.bounds))
-                bodies.push(body);
+            var bod = allBodies[i];
+            if (Bounds.overlaps(bod.bounds, render.bounds))
+                bodies.push(bod);
         }
 
 
@@ -2649,53 +2362,31 @@ Render.world = function (render, time) {
 
 Render.bodies = function (render, bodies, context) {
     var c = context,
-        engine = render.engine,
         options = render.options,
         showInternalEdges = options.showInternalEdges || !options.wireframes,
-        body,
+        bod,
         part,
         i,
         k;
 
     for (i = 0; i < bodies.length; i++) {
-        body = bodies[i];
+        bod = bodies[i];
 
-        if (!body.render.visible)
+        if (!bod.render.visible)
             continue;
 
 
-        for (k = body.parts.length > 1 ? 1 : 0; k < body.parts.length; k++) {
-            part = body.parts[k];
+        for (k = bod.parts.length > 1 ? 1 : 0; k < bod.parts.length; k++) {
+            part = bod.parts[k];
 
             if (!part.render.visible)
                 continue;
 
-            if (options.showSleeping && body.isSleeping) {
+            if (options.showSleeping && bod.isSleeping) {
                 c.globalAlpha = 0.5 * part.render.opacity;
             } else if (part.render.opacity !== 1) {
                 c.globalAlpha = part.render.opacity;
             }
-
-            if (part.render.sprite && part.render.sprite.texture && !options.wireframes) {
-
-                var sprite = part.render.sprite,
-                    texture = _getTexture(render, sprite.texture);
-
-                c.translate(part.position.x, part.position.y);
-                c.rotate(part.angle);
-
-                c.drawImage(
-                    texture,
-                    texture.width * -sprite.xOffset * sprite.xScale,
-                    texture.height * -sprite.yOffset * sprite.yScale,
-                    texture.width * sprite.xScale,
-                    texture.height * sprite.yScale
-                );
-
-
-                c.rotate(-part.angle);
-                c.translate(-part.position.x, -part.position.y);
-            } else {
 
                 if (part.circleRadius) {
                     c.beginPath();
@@ -2739,35 +2430,6 @@ Render.bodies = function (render, bodies, context) {
 
             c.globalAlpha = 1;
         }
-    }
-};
-
-var _updateTiming = function (render, time) {
-    var engine = render.engine,
-        timing = render.timing,
-        historySize = timing.historySize,
-        timestamp = engine.timing.timestamp;
-
-    timing.delta = time - timing.lastTime || Render._goodDelta;
-    timing.lastTime = time;
-
-    timing.timestampElapsed = timestamp - timing.lastTimestamp || 0;
-    timing.lastTimestamp = timestamp;
-
-    timing.deltaHistory.unshift(timing.delta);
-    timing.deltaHistory.length = Math.min(timing.deltaHistory.length, historySize);
-
-    timing.engineDeltaHistory.unshift(engine.timing.lastDelta);
-    timing.engineDeltaHistory.length = Math.min(timing.engineDeltaHistory.length, historySize);
-
-    timing.timestampElapsedHistory.unshift(timing.timestampElapsed);
-    timing.timestampElapsedHistory.length = Math.min(timing.timestampElapsedHistory.length, historySize);
-
-    timing.engineElapsedHistory.unshift(engine.timing.lastElapsed);
-    timing.engineElapsedHistory.length = Math.min(timing.engineElapsedHistory.length, historySize);
-
-    timing.elapsedHistory.unshift(timing.lastElapsed);
-    timing.elapsedHistory.length = Math.min(timing.elapsedHistory.length, historySize);
 };
 
 var _applyBackground = function (render, background) {
@@ -2924,10 +2586,9 @@ Engine.update = function (engine, delta, correction) {
 
     Events.trigger(engine, 'afterUpdate', event);
 
-
     engine.timing.lastElapsed = Common.now() - startTime;
 
-    MatterAttractors.Engine.update(engine);
+    MatterAttractors.update(engine);
 
     return engine;
 };
@@ -2944,9 +2605,9 @@ Engine.merge = function (engineA, engineB) {
         var bodies = Composite.allBodies(engineA.world);
 
         for (var i = 0; i < bodies.length; i++) {
-            var body = bodies[i];
-            Sleeping.set(body, false);
-            body.id = Common.nextId();
+            var bod = bodies[i];
+            Sleeping.set(bod, false);
+            bod.id = Common.nextId();
         }
     }
 };
@@ -2964,12 +2625,12 @@ Engine.clear = function (engine) {
 
 Engine._bodiesClearForces = function (bodies) {
     for (var i = 0; i < bodies.length; i++) {
-        var body = bodies[i];
+        var bod = bodies[i];
 
 
-        body.force.x = 0;
-        body.force.y = 0;
-        body.torque = 0;
+        bod.force.x = 0;
+        bod.force.y = 0;
+        bod.torque = 0;
     }
 };
 
@@ -2982,26 +2643,26 @@ Engine._bodiesApplyGravity = function (bodies, gravity) {
     }
 
     for (var i = 0; i < bodies.length; i++) {
-        var body = bodies[i];
+        var bod = bodies[i];
 
-        if (body.isStatic || body.isSleeping)
+        if (bod.isStatic || bod.isSleeping)
             continue;
 
 
-        body.force.y += body.mass * gravity.y * gravityScale;
-        body.force.x += body.mass * gravity.x * gravityScale;
+            bod.force.y += bod.mass * gravity.y * gravityScale;
+            bod.force.x += bod.mass * gravity.x * gravityScale;
     }
 };
 
 
 Engine._bodiesUpdate = function (bodies, deltaTime, timeScale, correction, worldBounds) {
     for (var i = 0; i < bodies.length; i++) {
-        var body = bodies[i];
+        var bod = bodies[i];
 
-        if (body.isStatic || body.isSleeping)
+        if (bod.isStatic || bod.isSleeping)
             continue;
 
-        Body.update(body, deltaTime, timeScale, correction);
+        Body.update(bod, deltaTime, timeScale, correction);
     }
 };
 
@@ -3043,7 +2704,6 @@ Resolver.solvePosition = function (pairs, timeScale) {
         bodyBtoA,
         contactShare,
         positionImpulse,
-        contactCount = {},
         tempA = Vector._temp[0],
         tempB = Vector._temp[1],
         tempC = Vector._temp[2],
@@ -3101,33 +2761,33 @@ Resolver.solvePosition = function (pairs, timeScale) {
 
 Resolver.postSolvePosition = function (bodies) {
     for (var i = 0; i < bodies.length; i++) {
-        var body = bodies[i];
+        var bod = bodies[i];
 
 
-        body.totalContacts = 0;
+        bod.totalContacts = 0;
 
-        if (body.positionImpulse.x !== 0 || body.positionImpulse.y !== 0) {
+        if (bod.positionImpulse.x !== 0 || bod.positionImpulse.y !== 0) {
 
-            for (var j = 0; j < body.parts.length; j++) {
-                var part = body.parts[j];
-                Vertices.translate(part.vertices, body.positionImpulse);
-                Bounds.update(part.bounds, part.vertices, body.velocity);
-                part.position.x += body.positionImpulse.x;
-                part.position.y += body.positionImpulse.y;
+            for (var j = 0; j < bod.parts.length; j++) {
+                var part = bod.parts[j];
+                Vertices.translate(part.vertices, bod.positionImpulse);
+                Bounds.update(part.bounds, part.vertices, bod.velocity);
+                part.position.x += bod.positionImpulse.x;
+                part.position.y += bod.positionImpulse.y;
             }
 
 
-            body.positionPrev.x += body.positionImpulse.x;
-            body.positionPrev.y += body.positionImpulse.y;
+            bod.positionPrev.x += bod.positionImpulse.x;
+            bod.positionPrev.y += bod.positionImpulse.y;
 
-            if (Vector.dot(body.positionImpulse, body.velocity) < 0) {
+            if (Vector.dot(bod.positionImpulse, bod.velocity) < 0) {
 
-                body.positionImpulse.x = 0;
-                body.positionImpulse.y = 0;
+                bod.positionImpulse.x = 0;
+                bod.positionImpulse.y = 0;
             } else {
 
-                body.positionImpulse.x *= Resolver._positionWarming;
-                body.positionImpulse.y *= Resolver._positionWarming;
+                bod.positionImpulse.x *= Resolver._positionWarming;
+                bod.positionImpulse.y *= Resolver._positionWarming;
             }
         }
     }
@@ -3315,7 +2975,6 @@ var Pairs = {};
 
 Pairs._pairMaxIdleLife = 1000;
 
-
 Pairs.create = function (options) {
     return Common.extend({
         table: {},
@@ -3459,27 +3118,25 @@ Grid.update = function (grid, bodies, engine, forceUpdate) {
         gridChanged = false;
 
     for (i = 0; i < bodies.length; i++) {
-        var body = bodies[i];
+        var bod = bodies[i];
 
-        if (body.isSleeping && !forceUpdate)
+        if (bod.isSleeping && !forceUpdate)
             continue;
 
 
-        if (world.bounds && (body.bounds.max.x < world.bounds.min.x || body.bounds.min.x > world.bounds.max.x ||
-                body.bounds.max.y < world.bounds.min.y || body.bounds.min.y > world.bounds.max.y))
+        if (world.bounds && (bod.bounds.max.x < world.bounds.min.x || bod.bounds.min.x > world.bounds.max.x ||
+                bod.bounds.max.y < world.bounds.min.y || bod.bounds.min.y > world.bounds.max.y))
             continue;
 
-        var newRegion = Grid._getRegion(grid, body);
+        var newRegion = Grid._getRegion(grid, bod);
 
 
-        if (!body.region || newRegion.id !== body.region.id || forceUpdate) {
+        if (!bod.region || newRegion.id !== bod.region.id || forceUpdate) {
 
-            if (!body.region || forceUpdate)
-                body.region = newRegion;
+            if (!bod.region || forceUpdate)
+                bod.region = newRegion;
 
-            var union = Grid._regionUnion(newRegion, body.region);
-
-
+            var union = Grid._regionUnion(newRegion, bod.region);
 
             for (col = union.startCol; col <= union.endCol; col++) {
                 for (row = union.startRow; row <= union.endRow; row++) {
@@ -3489,34 +3146,30 @@ Grid.update = function (grid, bodies, engine, forceUpdate) {
                     var isInsideNewRegion = (col >= newRegion.startCol && col <= newRegion.endCol &&
                         row >= newRegion.startRow && row <= newRegion.endRow);
 
-                    var isInsideOldRegion = (col >= body.region.startCol && col <= body.region.endCol &&
-                        row >= body.region.startRow && row <= body.region.endRow);
+                    var isInsideOldRegion = (col >= bod.region.startCol && col <= bod.region.endCol &&
+                        row >= bod.region.startRow && row <= bod.region.endRow);
 
 
                     if (!isInsideNewRegion && isInsideOldRegion) {
                         if (isInsideOldRegion) {
                             if (bucket)
-                                Grid._bucketRemoveBody(grid, bucket, body);
+                                Grid._bucketRemoveBody(grid, bucket, bod);
                         }
                     }
 
-
-                    if (body.region === newRegion || (isInsideNewRegion && !isInsideOldRegion) || forceUpdate) {
+                    if (bod.region === newRegion || (isInsideNewRegion && !isInsideOldRegion) || forceUpdate) {
                         if (!bucket)
                             bucket = Grid._createBucket(buckets, bucketId);
-                        Grid._bucketAddBody(grid, bucket, body);
+                        Grid._bucketAddBody(grid, bucket, bod);
                     }
                 }
             }
 
-
-            body.region = newRegion;
-
+            bod.region = newRegion;
 
             gridChanged = true;
         }
     }
-
 
     if (gridChanged)
         grid.pairsList = Grid._createActivePairsList(grid);
@@ -3575,8 +3228,6 @@ Grid._bucketAddBody = function (grid, bucket, body) {
         if (body.id === bodyB.id || (body.isStatic && bodyB.isStatic))
             continue;
 
-
-
         var pairId = Pair.id(body, bodyB),
             pair = grid.pairs[pairId];
 
@@ -3632,87 +3283,42 @@ Grid._createActivePairsList = function (grid) {
     return pairs;
 };
 
-var Matter = {};
-
-Matter.name = 'matter-js';
-
-Matter.version = "0.17.1";
-
-Matter.uses = [];
-
-Matter.used = [];
-
-Matter.use = function () {
-    Plugin.use(Matter, Array.prototype.slice.call(arguments));
-};
-
-Matter.before = function (path, func) {
-    path = path.replace(/^Matter./, '');
-    return Common.chainPathBefore(Matter, path, func);
-};
-
-Matter.after = function (path, func) {
-    console.log(path);
-    path = path.replace(/^Matter./, '');
-    return Common.chainPathAfter(Matter, path, func);
-};
-
 var MatterAttractors = {
 
-    name: 'matter-attractors',
-    version: '0.1.4',
-    for: 'matter-js@^0.12.0',
-  
-    /*install: function install(base) {
-      base.after('Body.create', function () {
-        MatterAttractors.Body.init(this);
-      });
-  
-      base.before('Engine.update', function (engine) {
-        MatterAttractors.Engine.update(engine);
-      });
-    },*/
-  
-    Body: {
-  
-      init: function init(body) {
+    init: function init(body) {
         body.plugin.attractors = body.plugin.attractors || [];
-      }
     },
-  
-    Engine: {
-  
-      update: function update(engine) {
+
+    update: function update(engine) {
         var world = engine.world,
-          bodies = Composite.allBodies(world);
-  
+            bodies = Composite.allBodies(world);
+
         for (var i = 0; i < bodies.length; i += 1) {
-          var bodyA = bodies[i],
-            attractors = bodyA.plugin.attractors;
-  
-          if (attractors && attractors.length > 0) {
-            for (var j = i + 1; j < bodies.length; j += 1) {
-              var bodyB = bodies[j];
-  
-              for (var k = 0; k < attractors.length; k += 1) {
-                var attractor = attractors[k],
-                  forceVector = attractor;
-  
-                if (Common.isFunction(attractor)) {
-                  forceVector = attractor(bodyA, bodyB);
+            var bodyA = bodies[i],
+                attractors = bodyA.plugin.attractors;
+
+            if (attractors && attractors.length > 0) {
+                for (var j = i + 1; j < bodies.length; j += 1) {
+                    var bodyB = bodies[j];
+
+                    for (var k = 0; k < attractors.length; k += 1) {
+                        var attractor = attractors[k],
+                            forceVector = attractor;
+
+                        if (Common.isFunction(attractor)) {
+                            forceVector = attractor(bodyA, bodyB);
+                        }
+
+                        if (forceVector) {
+                            Body.applyForce(bodyB, bodyB.position, forceVector);
+                        }
+                    }
                 }
-  
-                if (forceVector) {
-                  Body.applyForce(bodyB, bodyB.position, forceVector);
-                }
-              }
             }
-          }
         }
-      }
     },
-  
+
     Attractors: {
-      gravityConstant: 0.001,
+        gravityConstant: 0.001,
     }
-  };
+};
