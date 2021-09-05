@@ -1,19 +1,6 @@
 //INIT
 
-var Engine = MTR.Engine,
-	Events = MTR.Events,
-	Render = MTR.Render,
-	Composite = MTR.Composite,
-	B = MTR.Body,
-	Mouse = MTR.Mouse,
-	Common = MTR.Common,
-	Bodies = MTR.Bodies,
-	Bounds = MTR.Bounds,
-	SAT = MTR.SAT;
-
-	MTR.use(
-	'matter-attractors'
-)
+var	B = Body;
 
 // create engine
 var engine = Engine.create();
