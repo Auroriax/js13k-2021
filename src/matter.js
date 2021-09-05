@@ -1595,26 +1595,6 @@ Axes.rotate = function (axes, angle) {
 
 var Bodies = {};
 
-Bodies.circle = function (x, y, radius, options, maxSides) {
-    options = options || {};
-
-    var circle = {
-        label: 'Circle Body',
-        circleRadius: radius
-    };
-
-
-    maxSides = maxSides || 25;
-    var sides = Math.ceil(Math.max(10, Math.min(maxSides, radius)));
-
-
-    if (sides % 2 === 1)
-        sides += 1;
-
-    return Bodies.polygon(x, y, sides, radius, Common.extend({}, circle, options));
-};
-
-
 Bodies.polygon = function (x, y, sides, radius, options) {
     options = options || {};
 
@@ -2270,10 +2250,6 @@ Render.startViewTransform = function (render) {
     render.context.translate(-render.bounds.min.x, -render.bounds.min.y);
 };
 
-Render.endViewTransform = function (render) {
-    render.context.setTransform(render.options.pixelRatio, 0, 0, render.options.pixelRatio, 0, 0);
-};
-
 Render.world = function (render, time) {
     var startTime = Common.now(),
         engine = render.engine,
@@ -2314,48 +2290,12 @@ Render.world = function (render, time) {
                 bodies.push(bod);
         }
 
-
         Render.startViewTransform(render);
-
-
-        if (render.mouse) {
-            Mouse.setScale(render.mouse, {
-                x: (render.bounds.max.x - render.bounds.min.x) / render.options.width,
-                y: (render.bounds.max.y - render.bounds.min.y) / render.options.height
-            });
-
-            Mouse.setOffset(render.mouse, render.bounds.min);
-        }
-    } else {
-
-        bodies = allBodies;
-
-        if (render.options.pixelRatio !== 1) {
-            render.context.setTransform(render.options.pixelRatio, 0, 0, render.options.pixelRatio, 0, 0);
-        }
     }
 
-    if (!options.wireframes || (engine.enableSleeping && options.showSleeping)) {
-
-        Render.bodies(render, bodies, context);
-    } else {
-        if (options.showConvexHulls)
-            Render.bodyConvexHulls(render, bodies, context);
-
-
-        Render.bodyWireframes(render, bodies, context);
-    }
-
-    if (options.showBroadphase)
-        Render.grid(render, engine.grid, context);
-
-    if (options.hasBounds) {
-
-        Render.endViewTransform(render);
-    }
+    Render.bodies(render, bodies, context);
 
     Events.trigger(render, 'afterRender', event);
-
 
     timing.lastElapsed = Common.now() - startTime;
 };
