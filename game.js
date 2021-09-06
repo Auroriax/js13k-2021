@@ -19,72 +19,40 @@ var render = Render.create({
 
 var zoomLevel = 1;
 
+var str1 = "Celestial Lighthouse";
+var str2 = "Click to Play";
+
 var world = engine.world;
 engine.gravity.scale = 0;
-
-// create a body with an attractor
-var planet = Bodies.polygon(
-	0,
-	0,
-	100,
-	150, 
-	{
-	isStatic: true,
-
-	// example of an attractor function that 
-	// returns a force vector that applies to bodyB
-	plugin: {
-		attractors: [
-			function(bodyA, bodyB) {
-				return {
-					x: (bodyA.position.x - bodyB.position.x) * 1e-6,
-					y: (bodyA.position.y - bodyB.position.y) * 1e-6,
-				};
-			}
-		]
-	}
-}
-);
-
-planet.render.fillStyle = "#CD0E0E";
-Composite.add(world, planet);
-
-var validationZone = Bodies.polygon(
-	0,
-	0,
-	100,
-	450,
-	{
-	isStatic: true,
-	isSensor: true
-},
-);
-
-validationZone.render.fillStyle = "#00000000";
 
 var gradient = context.createLinearGradient(0, 0, 800, 800);
 gradient.addColorStop("0", "white");
 gradient.addColorStop("0.5", "gray");
 gradient.addColorStop("1.0", "white");
 
-validationZone.render.strokeStyle = gradient;
-validationZone.render.lineWidth = 3;
-validationZone.render.opacity = 0.3;
-Composite.add(world, validationZone);
+var planet;
+var atmosphere;
+var solidPlats = [];
+
+var placedBlocks = [];
+
+var previewVertices;
+var previewBlock;
+
+var hoverVertices;
+var hoverPreview;
+
+var totalBlocks;
+var blockSelection;
+var hoverAngle = 0;
 
 var mouse = Mouse.create(render.canvas);
 
 resize();
+
+Load(0);
+
 mouse.position = {x: 0, y: -1};
-
-var placedBlocks = [];
-
-var previewVertices = randomFromArray(shapes);
-var previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
-
-var hoverVertices = randomFromArray(shapes, previewVertices);
-var hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
-var hoverAngle = 0;
 
 //Scatter stars
 var stars = [];
@@ -158,6 +126,7 @@ var tBlockPlacementCooldown = new Timer(2);
 var tNewBlockSpawn = new Timer(1);
 
 var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
+var kReset = new InputHandler(["KeyR"], [], Infinity);
 
 //UPDATE
 
@@ -171,6 +140,11 @@ Events.on(engine, 'beforeUpdate', function() {
 		tNewBlockSpawn.update(fps);
 
 		kRotate.update(fps);
+		kReset.update(fps);
+
+		if (kReset.fired) {
+			Restart();
+		}
 
 		const rotateAngle = 0.0002;
 		for(var i = 0; i != stars.length; i++) {
@@ -224,6 +198,18 @@ Events.on(engine, 'beforeUpdate', function() {
 						colliding = true; break;
 					}
 				}
+
+				if (!colliding) {
+					for (var i = 0; i != solidPlats.length; i++) {
+						if (SAT.collides(solidPlats[i], hoverPreview).collided) {
+							colliding = true; break;
+						}
+					}
+
+					if (!colliding) {
+						colliding = !SAT.collides(hoverPreview, atmosphere).collided;
+					}
+				}
 			}
 	
 			hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
@@ -236,6 +222,10 @@ Events.on(engine, 'beforeUpdate', function() {
 					Composite.remove(world, hoverPreview);
 					hoverPreview = null;
 					tBlockPlacementCooldown.start();
+
+					if (blocksLeft <= 0) {
+						//QQQ Start countdown
+					}
 				}
 			} else if (mouse.button == -1 && mouseDown) {
 				mouseDown = false;
@@ -243,12 +233,17 @@ Events.on(engine, 'beforeUpdate', function() {
 		}
 
 		if (tBlockPlacementCooldown.finishedThisFrame) {
+
 			hoverVertices = previewVertices;
 			hoverPreview = previewBlock;
 
-			previewVertices = randomFromArray(shapes, hoverPreview);
-			previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
-			previewBlock.render.opacity = 0;
+			if (blocksLeft > 0) {
+				blocksLeft--;
+
+				previewVertices = randomFromArray(blockSelection, hoverPreview);
+				previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
+				previewBlock.render.opacity = 0;
+			}
 			hoverAngle = 0;
 
 			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
@@ -256,7 +251,138 @@ Events.on(engine, 'beforeUpdate', function() {
 
 			tNewBlockSpawn.start();
 		}
+
+		//LOST CHECK
+		for (var i = 0; i != placedBlocks.length; i++) {
+			if (SAT.collides(placedBlocks[i], planet).collided) {
+				Composite.removeBody(world, placedBlocks[i]); 
+
+				placedBlocks.splice(i);
+
+				str1 = "Oops!";
+				str2 = "Block fell into core of planet.";
+
+				break;
+				//QQQ SFX
+			}
+		}
 });
+
+function Restart() {
+	for (var i = 0; i != placedBlocks.length; i++) {
+		Composite.removeBody(world, placedBlocks[i]);
+	}
+
+	placedBlocks.length = 0;
+
+	hoverAngle = 0;
+	state = 0;
+	paused = false;
+	blocksLeft = totalBlocks;
+
+	if (previewBlock) {
+		Composite.removeBody(world, previewBlock);
+	}
+
+	if (hoverPreview) {
+		Composite.removeBody(world, hoverPreview);
+	}
+
+	previewVertices = randomFromArray(blockSelection);
+	previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
+
+	hoverVertices = randomFromArray(blockSelection, previewVertices);
+	hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
+}
+
+function Unload() {
+	Restart();
+
+	for (var i = 0; i != solidPlats.length; i++) {
+		Composite.removeBody(world, solidPlats[i]);
+	}
+
+	solidPlats.length = 0;
+}
+
+function Load(nr) {
+	curLevel = nr;
+	lvlData = levels[nr];
+
+	if (planet) {
+		Composite.removeBody(world, planet);
+	}
+
+	if (atmosphere) {
+		Composite.removeBody(world, atmosphere);
+	}
+
+	totalBlocks = lvlData[0];
+	blockSelection = lvlData[3];
+
+	// create a body with an attractor
+	planet = Bodies.polygon(
+		0,
+		0,
+		100,
+		lvlData[1], 
+		{
+		isStatic: true,
+		isSensor: true,
+
+		// example of an attractor function that 
+		// returns a force vector that applies to bodyB
+		plugin: {
+			attractors: [
+				function(bodyA, bodyB) {
+					return {
+						x: (bodyA.position.x - bodyB.position.x) * 1e-6,
+						y: (bodyA.position.y - bodyB.position.y) * 1e-6,
+					};
+				}
+			]
+		},
+	}
+	);
+
+	planet.render.fillStyle = "#CD0E0E";
+	Composite.add(world, planet);
+
+	atmosphere = Bodies.polygon(
+		0,
+		0,
+		100,
+		lvlData[2],
+		{
+		isStatic: true,
+		isSensor: true
+	},
+	);
+	
+	atmosphere.render.fillStyle = "#00000000";
+	
+	atmosphere.render.strokeStyle = gradient;
+	atmosphere.render.lineWidth = 3;
+	atmosphere.render.opacity = 0.3;
+	Composite.add(world, atmosphere);
+
+	for(var i = 0; i != lvlData[4].length; i++) {
+		var sld = lvlData[4][i];
+		var plat = Bodies.polygon(
+			sld[0], sld[1], Math.abs(sld[2]), sld[3], {
+				isStatic: true
+			}, sld[2] < 0
+		)
+		
+		Body.setAngle(plat, sld[4] * (Math.PI/180))
+		Body.scale(plat, sld[5], sld[6]);
+		
+		Composite.add(world, plat);
+		solidPlats.push(plat);
+	}
+
+	Restart();
+}
 
 function RotateBlock(rotateDelta) {
 	prevRotation = hoverAngle;
@@ -267,13 +393,40 @@ function RotateBlock(rotateDelta) {
 
 //LIFECYCLE
 
+var paused = false;
+var blocksLeft = 3;
+var state = 0; //0 = normal, 1 = won, -1 = lost.
+
 function run() {
 	window.requestAnimationFrame(run);
 
-	kRotate.update(1 / 30);
+	if (!paused) {
+		kRotate.update(1 / 30);
 
-	Engine.update(engine, 1000 / 30);
-	Render.world(render);
+		Engine.update(engine, 1000 / 30);
+		Render.world(render);
+	}
+
+	context.textAlign = "center";
+	context.fillStyle = "#fff";
+	context.strokeStyle = "#333";
+	context.lineWidth = 8;
+
+	var w = window.innerWidth * .5 * zoom;
+	var h = window.innerHeight * 0.5 * zoom;
+
+	context.font="small-caps bold 40px monospace";
+	context.strokeText(str1, 0, h - 60);
+	context.fillText(str1, 0, h - 60);
+
+	context.font="small-caps bold 32px monospace";
+	context.strokeText(str2, 0, h - 25);
+	context.fillText(str2, 0, h - 25);
+
+	var str = blocksLeft + " left";
+	context.font="small-caps bold 24px monospace";
+	context.strokeText(str, w - 75, -h + 150);
+	context.fillText(str, w - 75, -h + 150);
 };
 
 window.onresize = function() {
@@ -281,16 +434,18 @@ window.onresize = function() {
 	console.log("resized canvas");
 };
 
+var zoom = 1;
+
 function resize() {
 
-	var zoom = 1;
+	zoom = 1;
 	var w = window.innerWidth;
 	var h = window.innerHeight;
 	if (w < 900 || h < 900) {
-		zoom = 1.5;
+		zoom = 1.25;
 
-		if (w < 600 || h < 600) {
-			zoom = 2;
+		if (w < 750 || h < 750) {
+			zoom = 1.5;
 		}
 	}
 
@@ -307,6 +462,7 @@ function resize() {
 	Mouse.setScale(mouse, {x: zoom, y: zoom});
 }
 
+resize();
 run();
 
 //UTILITY

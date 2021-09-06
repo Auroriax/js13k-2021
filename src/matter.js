@@ -1595,17 +1595,14 @@ Axes.rotate = function (axes, angle) {
 
 var Bodies = {};
 
-Bodies.polygon = function (x, y, sides, radius, options) {
+Bodies.polygon = function (x, y, sides, radius, options, half = false) {
     options = options || {};
-
-    if (sides < 3)
-        return Bodies.circle(x, y, radius, options);
 
     var theta = 2 * Math.PI / sides,
         path = '',
         offset = theta * 0.5;
 
-    for (var i = 0; i < sides; i += 1) {
+    for (var i = 0; i < (half ? sides / 2 : sides); i += 1) {
         var angle = offset + (i * theta),
             xx = Math.cos(angle) * radius,
             yy = Math.sin(angle) * radius;
