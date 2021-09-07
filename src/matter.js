@@ -894,7 +894,6 @@ Body.create = function (options) {
         angularVelocity: 0,
         isSensor: false,
         isStatic: false,
-        isSleeping: false,
         motion: 0,
         sleepThreshold: 60,
         density: 0.001,
@@ -956,7 +955,6 @@ var _initProperties = function (body, options) {
         vertices: body.vertices,
         parts: body.parts || [body],
         isStatic: body.isStatic,
-        isSleeping: body.isSleeping,
         parent: body.parent || body
     });
 
@@ -1001,9 +999,6 @@ Body.set = function (body, settings, value) {
 
             case 'isStatic':
                 Body.setStatic(body, value);
-                break;
-            case 'isSleeping':
-                Sleeping.set(body, value);
                 break;
             case 'mass':
                 Body.setMass(body, value);
@@ -1362,107 +1357,6 @@ Body.applyForce = function (body, position, force) {
         y: position.y - body.position.y
     };
     body.torque += offset.x * force.y - offset.y * force.x;
-};
-
-var Sleeping = {};
-
-Sleeping._motionWakeThreshold = 0.18;
-Sleeping._motionSleepThreshold = 0.08;
-Sleeping._minBias = 0.9;
-
-
-Sleeping.update = function (bodies, timeScale) {
-    var timeFactor = timeScale * timeScale * timeScale;
-
-
-    for (var i = 0; i < bodies.length; i++) {
-        var bod = bodies[i],
-            motion = bod.speed * bod.speed + bod.angularSpeed * bod.angularSpeed;
-
-
-        if (bod.force.x !== 0 || bod.force.y !== 0) {
-            Sleeping.set(bod, false);
-            continue;
-        }
-
-        var minMotion = Math.min(bod.motion, motion),
-            maxMotion = Math.max(bod.motion, motion);
-
-
-            bod.motion = Sleeping._minBias * minMotion + (1 - Sleeping._minBias) * maxMotion;
-
-        if (bod.sleepThreshold > 0 && bod.motion < Sleeping._motionSleepThreshold * timeFactor) {
-            bod.sleepCounter += 1;
-
-            if (bod.sleepCounter >= bod.sleepThreshold)
-                Sleeping.set(bod, true);
-        } else if (bod.sleepCounter > 0) {
-            bod.sleepCounter -= 1;
-        }
-    }
-};
-
-
-Sleeping.afterCollisions = function (pairs, timeScale) {
-    var timeFactor = timeScale * timeScale * timeScale;
-
-
-    for (var i = 0; i < pairs.length; i++) {
-        var pair = pairs[i];
-
-
-        if (!pair.isActive)
-            continue;
-
-        var collision = pair.collision,
-            bodyA = collision.bodyA.parent,
-            bodyB = collision.bodyB.parent;
-
-
-        if ((bodyA.isSleeping && bodyB.isSleeping) || bodyA.isStatic || bodyB.isStatic)
-            continue;
-
-        if (bodyA.isSleeping || bodyB.isSleeping) {
-            var sleepingBody = (bodyA.isSleeping && !bodyA.isStatic) ? bodyA : bodyB,
-                movingBody = sleepingBody === bodyA ? bodyB : bodyA;
-
-            if (!sleepingBody.isStatic && movingBody.motion > Sleeping._motionWakeThreshold * timeFactor) {
-                Sleeping.set(sleepingBody, false);
-            }
-        }
-    }
-};
-
-
-Sleeping.set = function (body, isSleeping) {
-    var wasSleeping = body.isSleeping;
-
-    if (isSleeping) {
-        body.isSleeping = true;
-        body.sleepCounter = body.sleepThreshold;
-
-        body.positionImpulse.x = 0;
-        body.positionImpulse.y = 0;
-
-        body.positionPrev.x = body.position.x;
-        body.positionPrev.y = body.position.y;
-
-        body.anglePrev = body.angle;
-        body.speed = 0;
-        body.angularSpeed = 0;
-        body.motion = 0;
-
-        if (!wasSleeping) {
-            Events.trigger(body, 'sleepStart');
-        }
-    } else {
-        body.isSleeping = false;
-        body.sleepCounter = 0;
-
-        if (wasSleeping) {
-            Events.trigger(body, 'sleepEnd');
-        }
-    }
 };
 
 var Pair = {};
@@ -1895,9 +1789,6 @@ Detector.collisions = function (broadphasePairs, engine) {
         var bodyA = broadphasePairs[i][0],
             bodyB = broadphasePairs[i][1];
 
-        if ((bodyA.isStatic || bodyA.isSleeping) && (bodyB.isStatic || bodyB.isSleeping))
-            continue;
-
         if (!Detector.canCollide(bodyA.collisionFilter, bodyB.collisionFilter))
             continue;
 
@@ -2319,9 +2210,7 @@ Render.bodies = function (render, bodies, context) {
             if (!part.render.visible)
                 continue;
 
-            if (options.showSleeping && bod.isSleeping) {
-                c.globalAlpha = 0.5 * part.render.opacity;
-            } else if (part.render.opacity !== 1) {
+            if (part.render.opacity !== 1) {
                 c.globalAlpha = part.render.opacity;
             }
 
@@ -2402,7 +2291,6 @@ Engine.create = function (options) {
         positionIterations: 6,
         velocityIterations: 4,
         constraintIterations: 2,
-        enableSleeping: false,
         events: [],
         plugin: {},
         grid: null,
@@ -2458,10 +2346,6 @@ Engine.update = function (engine, delta, correction) {
 
     var allBodies = Composite.allBodies(world);
 
-    if (engine.enableSleeping)
-        Sleeping.update(allBodies, timing.timeScale);
-
-
     Engine._bodiesApplyGravity(allBodies, engine.gravity);
 
     Engine._bodiesUpdate(allBodies, delta, timing.timeScale, correction, world.bounds);
@@ -2486,11 +2370,6 @@ Engine.update = function (engine, delta, correction) {
         timestamp = timing.timestamp;
     Pairs.update(pairs, collisions, timestamp);
     Pairs.removeOld(pairs, timestamp);
-
-
-    if (engine.enableSleeping)
-        Sleeping.afterCollisions(pairs.list, timing.timeScale);
-
 
     if (pairs.collisionStart.length > 0)
         Events.trigger(engine, 'collisionStart', {
@@ -2530,26 +2409,6 @@ Engine.update = function (engine, delta, correction) {
     return engine;
 };
 
-
-Engine.merge = function (engineA, engineB) {
-    Common.extend(engineA, engineB);
-
-    if (engineB.world) {
-        engineA.world = engineB.world;
-
-        Engine.clear(engineA);
-
-        var bodies = Composite.allBodies(engineA.world);
-
-        for (var i = 0; i < bodies.length; i++) {
-            var bod = bodies[i];
-            Sleeping.set(bod, false);
-            bod.id = Common.nextId();
-        }
-    }
-};
-
-
 Engine.clear = function (engine) {
     var world = engine.world,
         bodies = Composite.allBodies(world);
@@ -2582,12 +2441,8 @@ Engine._bodiesApplyGravity = function (bodies, gravity) {
     for (var i = 0; i < bodies.length; i++) {
         var bod = bodies[i];
 
-        if (bod.isStatic || bod.isSleeping)
-            continue;
-
-
-            bod.force.y += bod.mass * gravity.y * gravityScale;
-            bod.force.x += bod.mass * gravity.x * gravityScale;
+        bod.force.y += bod.mass * gravity.y * gravityScale;
+        bod.force.x += bod.mass * gravity.x * gravityScale;
     }
 };
 
@@ -2596,7 +2451,7 @@ Engine._bodiesUpdate = function (bodies, deltaTime, timeScale, correction, world
     for (var i = 0; i < bodies.length; i++) {
         var bod = bodies[i];
 
-        if (bod.isStatic || bod.isSleeping)
+        if (bod.isStatic)
             continue;
 
         Body.update(bod, deltaTime, timeScale, correction);
@@ -2681,13 +2536,13 @@ Resolver.solvePosition = function (pairs, timeScale) {
         if (bodyA.isStatic || bodyB.isStatic)
             positionImpulse *= 2;
 
-        if (!(bodyA.isStatic || bodyA.isSleeping)) {
+        if (!bodyA.isStatic) {
             contactShare = Resolver._positionDampen / bodyA.totalContacts;
             bodyA.positionImpulse.x += normal.x * positionImpulse * contactShare;
             bodyA.positionImpulse.y += normal.y * positionImpulse * contactShare;
         }
 
-        if (!(bodyB.isStatic || bodyB.isSleeping)) {
+        if (!bodyB.isStatic) {
             contactShare = Resolver._positionDampen / bodyB.totalContacts;
             bodyB.positionImpulse.x -= normal.x * positionImpulse * contactShare;
             bodyB.positionImpulse.y -= normal.y * positionImpulse * contactShare;
@@ -2775,14 +2630,14 @@ Resolver.preSolveVelocity = function (pairs) {
                 impulse.y = (normal.y * normalImpulse) + (tangent.y * tangentImpulse);
 
 
-                if (!(bodyA.isStatic || bodyA.isSleeping)) {
+                if (!bodyA.isStatic) {
                     offset = Vector.sub(contactVertex, bodyA.position, tempA);
                     bodyA.positionPrev.x += impulse.x * bodyA.inverseMass;
                     bodyA.positionPrev.y += impulse.y * bodyA.inverseMass;
                     bodyA.anglePrev += Vector.cross(offset, impulse) * bodyA.inverseInertia;
                 }
 
-                if (!(bodyB.isStatic || bodyB.isSleeping)) {
+                if (!bodyB.isStatic) {
                     offset = Vector.sub(contactVertex, bodyB.position, tempA);
                     bodyB.positionPrev.x -= impulse.x * bodyB.inverseMass;
                     bodyB.positionPrev.y -= impulse.y * bodyB.inverseMass;
@@ -2893,13 +2748,13 @@ Resolver.solveVelocity = function (pairs, timeScale) {
             impulse.y = (normal.y * normalImpulse) + (tangent.y * tangentImpulse);
 
 
-            if (!(bodyA.isStatic || bodyA.isSleeping)) {
+            if (!bodyA.isStatic) {
                 bodyA.positionPrev.x += impulse.x * bodyA.inverseMass;
                 bodyA.positionPrev.y += impulse.y * bodyA.inverseMass;
                 bodyA.anglePrev += Vector.cross(offsetA, impulse) * bodyA.inverseInertia;
             }
 
-            if (!(bodyB.isStatic || bodyB.isSleeping)) {
+            if (!bodyB.isStatic) {
                 bodyB.positionPrev.x -= impulse.x * bodyB.inverseMass;
                 bodyB.positionPrev.y -= impulse.y * bodyB.inverseMass;
                 bodyB.anglePrev -= Vector.cross(offsetB, impulse) * bodyB.inverseInertia;
@@ -3000,13 +2855,6 @@ Pairs.removeOld = function (pairs, timestamp) {
         pair = pairsList[i];
         collision = pair.collision;
 
-
-        if (collision.bodyA.isSleeping || collision.bodyB.isSleeping) {
-            pair.timeUpdated = timestamp;
-            continue;
-        }
-
-
         if (timestamp - pair.timeUpdated > Pairs._pairMaxIdleLife) {
             indexesToRemove.push(i);
         }
@@ -3057,7 +2905,7 @@ Grid.update = function (grid, bodies, engine, forceUpdate) {
     for (i = 0; i < bodies.length; i++) {
         var bod = bodies[i];
 
-        if (bod.isSleeping && !forceUpdate)
+        if (!forceUpdate)
             continue;
 
 
