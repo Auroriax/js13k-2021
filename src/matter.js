@@ -1,9 +1,7 @@
 var Common = {};
 
 Common._nextId = 0;
-Common._seed = 0;
 Common._nowStartTime = +(new Date());
-Common._warnedOnce = {};
 
 Common.extend = function (obj, deep) {
     var argsStart,
@@ -71,39 +69,6 @@ Common.values = function (obj) {
     return values;
 };
 
-Common.get = function (obj, path, begin, end) {
-    path = path.split('.').slice(begin, end);
-
-    for (var i = 0; i < path.length; i += 1) {
-        obj = obj[path[i]];
-    }
-
-    return obj;
-};
-
-Common.set = function (obj, path, val, begin, end) {
-    var parts = path.split('.').slice(begin, end);
-    Common.get(obj, path, 0, -1)[parts[parts.length - 1]] = val;
-    return val;
-};
-
-
-Common.shuffle = function (array) {
-    for (var i = array.length - 1; i > 0; i--) {
-        var j = Math.floor(Common.random() * (i + 1));
-        var temp = array[i];
-        array[i] = array[j];
-        array[j] = temp;
-    }
-    return array;
-};
-
-
-Common.choose = function (choices) {
-    return choices[Math.floor(Common.random() * choices.length)];
-};
-
-
 Common.isElement = function (obj) {
     if (typeof HTMLElement !== 'undefined') {
         return obj instanceof HTMLElement;
@@ -121,17 +86,6 @@ Common.isArray = function (obj) {
 Common.isFunction = function (obj) {
     return typeof obj === "function";
 };
-
-
-Common.isPlainObject = function (obj) {
-    return typeof obj === 'object' && obj.constructor === Object;
-};
-
-
-Common.isString = function (obj) {
-    return (typeof obj == "string");
-};
-
 
 Common.clamp = function (value, min, max) {
     if (value < min)
@@ -162,20 +116,6 @@ Common.now = function () {
 
     return (new Date()) - Common._nowStartTime;
 };
-
-
-Common.random = function (min, max) {
-    min = (typeof min !== "undefined") ? min : 0;
-    max = (typeof max !== "undefined") ? max : 1;
-    return min + _seededRandom() * (max - min);
-};
-
-var _seededRandom = function () {
-
-    Common._seed = (Common._seed * 9301 + 49297) % 233280;
-    return Common._seed / 233280;
-};
-
 
 Common.nextId = function () {
     return Common._nextId++;
@@ -788,13 +728,13 @@ Composite.allBodies = function (composite) {
     return bodies;
 };
 
-var Body = {};
-Body._inertiaScale = 4;
-Body._nextCollidingGroupId = 1;
-Body._nextNonCollidingGroupId = -1;
-Body._nextCategory = 0x0001;
+var Bd = {};
+Bd._inertiaScale = 4;
+Bd._nextCollidingGroupId = 1;
+Bd._nextNonCollidingGroupId = -1;
+Bd._nextCategory = 0x0001;
 
-Body.create = function (options) {
+Bd.create = function (options) {
     var defaults = {
         id: Common.nextId(),
         type: 'body',
@@ -878,7 +818,7 @@ var _initProperties = function (body, options) {
     options = options || {};
 
 
-    Body.set(body, {
+    Bd.set(body, {
         bounds: body.bounds || Bounds.create(body.vertices),
         positionPrev: body.positionPrev || Vector.clone(body.position),
         anglePrev: body.anglePrev || body.angle,
@@ -893,7 +833,7 @@ var _initProperties = function (body, options) {
     Bounds.update(body.bounds, body.vertices, body.velocity);
 
 
-    Body.set(body, {
+    Bd.set(body, {
         axes: options.axes || body.axes,
         area: options.area || body.area,
         mass: options.mass || body.mass,
@@ -909,7 +849,7 @@ var _initProperties = function (body, options) {
     body.render.lineWidth = body.render.lineWidth || defaultLineWidth;
 };
 
-Body.set = function (body, settings, value) {
+Bd.set = function (body, settings, value) {
     var property;
 
     if (typeof settings === 'string') {
@@ -926,22 +866,22 @@ Body.set = function (body, settings, value) {
         switch (property) {
 
             case 'isStatic':
-                Body.setStatic(body, value);
+                Bd.setStatic(body, value);
                 break;
             case 'mass':
-                Body.setMass(body, value);
+                Bd.setMass(body, value);
                 break;
             case 'density':
-                Body.setDensity(body, value);
+                Bd.setDensity(body, value);
                 break;
             case 'inertia':
-                Body.setInertia(body, value);
+                Bd.setInertia(body, value);
                 break;
             case 'vertices':
-                Body.setVertices(body, value);
+                Bd.setVertices(body, value);
                 break;
             case 'parts':
-                Body.setParts(body, value);
+                Bd.setParts(body, value);
                 break;
             default:
                 body[property] = value;
@@ -951,7 +891,7 @@ Body.set = function (body, settings, value) {
 };
 
 
-Body.setStatic = function (body, isStatic) {
+Bd.setStatic = function (body, isStatic) {
     for (var i = 0; i < body.parts.length; i++) {
         var part = body.parts[i];
         part.isStatic = isStatic;
@@ -994,7 +934,7 @@ Body.setStatic = function (body, isStatic) {
 };
 
 
-Body.setMass = function (body, mass) {
+Bd.setMass = function (body, mass) {
     var moment = body.inertia / (body.mass / 6);
     body.inertia = moment * (mass / 6);
     body.inverseInertia = 1 / body.inertia;
@@ -1005,19 +945,19 @@ Body.setMass = function (body, mass) {
 };
 
 
-Body.setDensity = function (body, density) {
-    Body.setMass(body, density * body.area);
+Bd.setDensity = function (body, density) {
+    Bd.setMass(body, density * body.area);
     body.density = density;
 };
 
 
-Body.setInertia = function (body, inertia) {
+Bd.setInertia = function (body, inertia) {
     body.inertia = inertia;
     body.inverseInertia = 1 / body.inertia;
 };
 
 
-Body.setVertices = function (body, vertices) {
+Bd.setVertices = function (body, vertices) {
 
     if (vertices[0].body === body) {
         body.vertices = vertices;
@@ -1028,14 +968,14 @@ Body.setVertices = function (body, vertices) {
 
     body.axes = Axes.fromVertices(body.vertices);
     body.area = Vertices.area(body.vertices);
-    Body.setMass(body, body.density * body.area);
+    Bd.setMass(body, body.density * body.area);
 
 
     var centre = Vertices.centre(body.vertices);
     Vertices.translate(body.vertices, centre, -1);
 
 
-    Body.setInertia(body, Body._inertiaScale * Vertices.inertia(body.vertices, body.mass));
+    Bd.setInertia(body, Bd._inertiaScale * Vertices.inertia(body.vertices, body.mass));
 
 
     Vertices.translate(body.vertices, body.position);
@@ -1043,7 +983,7 @@ Body.setVertices = function (body, vertices) {
 };
 
 
-Body.setParts = function (body, parts) {
+Bd.setParts = function (body, parts) {
     var i;
 
 
@@ -1062,7 +1002,7 @@ Body.setParts = function (body, parts) {
 };
 
 
-Body.setPosition = function (body, position) {
+Bd.setPosition = function (body, position) {
     var delta = Vector.sub(position, body.position);
     body.positionPrev.x += delta.x;
     body.positionPrev.y += delta.y;
@@ -1077,7 +1017,7 @@ Body.setPosition = function (body, position) {
 };
 
 
-Body.setAngle = function (body, angle) {
+Bd.setAngle = function (body, angle) {
     var delta = angle - body.angle;
     body.anglePrev += delta;
 
@@ -1093,31 +1033,31 @@ Body.setAngle = function (body, angle) {
     }
 };
 
-Body.translate = function (body, translation) {
-    Body.setPosition(body, Vector.add(body.position, translation));
+Bd.translate = function (body, translation) {
+    Bd.setPosition(body, Vector.add(body.position, translation));
 };
 
 
-Body.rotate = function (body, rotation, point) {
+Bd.rotate = function (body, rotation, point) {
     if (!point) {
-        Body.setAngle(body, body.angle + rotation);
+        Bd.setAngle(body, body.angle + rotation);
     } else {
         var cos = Math.cos(rotation),
             sin = Math.sin(rotation),
             dx = body.position.x - point.x,
             dy = body.position.y - point.y;
 
-        Body.setPosition(body, {
+        Bd.setPosition(body, {
             x: point.x + (dx * cos - dy * sin),
             y: point.y + (dx * sin + dy * cos)
         });
 
-        Body.setAngle(body, body.angle + rotation);
+        Bd.setAngle(body, body.angle + rotation);
     }
 };
 
 
-Body.scale = function (body, scaleX, scaleY, point) {
+Bd.scale = function (body, scaleX, scaleY, point) {
     var totalArea = 0,
         totalInertia = 0;
 
@@ -1132,14 +1072,14 @@ Body.scale = function (body, scaleX, scaleY, point) {
 
         part.axes = Axes.fromVertices(part.vertices);
         part.area = Vertices.area(part.vertices);
-        Body.setMass(part, body.density * part.area);
+        Bd.setMass(part, body.density * part.area);
 
 
         Vertices.translate(part.vertices, {
             x: -part.position.x,
             y: -part.position.y
         });
-        Body.setInertia(part, Body._inertiaScale * Vertices.inertia(part.vertices, part.mass));
+        Bd.setInertia(part, Bd._inertiaScale * Vertices.inertia(part.vertices, part.mass));
         Vertices.translate(part.vertices, {
             x: part.position.x,
             y: part.position.y
@@ -1163,8 +1103,8 @@ Body.scale = function (body, scaleX, scaleY, point) {
         body.area = totalArea;
 
         if (!body.isStatic) {
-            Body.setMass(body, body.density * totalArea);
-            Body.setInertia(body, totalInertia);
+            Bd.setMass(body, body.density * totalArea);
+            Bd.setInertia(body, totalInertia);
         }
     }
 
@@ -1180,7 +1120,7 @@ Body.scale = function (body, scaleX, scaleY, point) {
 };
 
 
-Body.update = function (body, deltaTime, timeScale, correction) {
+Bd.update = function (body, deltaTime, timeScale, correction) {
     var deltaTimeSquared = Math.pow(deltaTime * timeScale * body.timeScale, 2);
 
 
@@ -1230,7 +1170,7 @@ Body.update = function (body, deltaTime, timeScale, correction) {
 };
 
 
-Body.applyForce = function (body, position, force) {
+Bd.applyForce = function (body, position, force) {
     body.force.x += force.x;
     body.force.y += force.y;
     var offset = {
@@ -1393,7 +1333,7 @@ Bodies.polygon = function (x, y, sides, radius, options, half = false) {
         vertices: Vertices.fromPath(path)
     };
 
-    return Body.create(Common.extend({}, polygon, options));
+    return Bd.create(Common.extend({}, polygon, options));
 };
 
 
@@ -1436,7 +1376,7 @@ Bodies.fromVertices = function (x, y, vertexSets, options, flagInternal, removeC
 
 
     for (i = 0; i < parts.length; i++) {
-        parts[i] = Body.create(Common.extend(parts[i], options));
+        parts[i] = Bd.create(Common.extend(parts[i], options));
     }
 
 
@@ -1475,12 +1415,12 @@ Bodies.fromVertices = function (x, y, vertexSets, options, flagInternal, removeC
 
     if (parts.length > 1) {
 
-        body = Body.create(Common.extend({
+        body = Bd.create(Common.extend({
             parts: parts.slice(0)
         }, options));
 
 
-        Body.setPosition(body, {
+        Bd.setPosition(body, {
             x: x,
             y: y
         });
@@ -2306,7 +2246,7 @@ Engine._bodiesUpdate = function (bodies, deltaTime, timeScale, correction, world
         if (bod.isStatic)
             continue;
 
-        Body.update(bod, deltaTime, timeScale, correction);
+        Bd.update(bod, deltaTime, timeScale, correction);
     }
 };
 
@@ -2943,7 +2883,7 @@ var MatterAttractors = {
                         }
 
                         if (forceVector) {
-                            Body.applyForce(bodyB, bodyB.position, forceVector);
+                            Bd.applyForce(bodyB, bodyB.position, forceVector);
                         }
                     }
                 }
