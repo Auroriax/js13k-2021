@@ -1,10 +1,22 @@
-// create engine
+//INPUT
+
+var tRotateHoveredBlock = new Timer(0.15);
+var prevRotation = 0;
+var rotateAppend = 0;
+
+var tBlockPlacementCooldown = new Timer(1.5);
+var tNewBlockSpawn = new Timer(1);
+var tWinTimer = new Timer(3);
+var tRestartTimer = new Timer(3);
+
+var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
+var kReset = new InputHandler(["KeyR"], [], Infinity);
+
 var engine = Engine.create();
 
 var canvas = document.getElementById("gameCanvas");
 var context = canvas.getContext("2d");
 
-// create renderer
 var render = Render.create({
 	canvas:  canvas,
 	engine: engine,
@@ -119,20 +131,6 @@ function CreateBlock(x, y, ang, vertexArray) {
 	placedBlocks.push(bod);
 	Composite.add(world, bod);
 }
-
-//INPUT
-
-var tRotateHoveredBlock = new Timer(0.15);
-var prevRotation = 0;
-var rotateAppend = 0;
-
-var tBlockPlacementCooldown = new Timer(1.5);
-var tNewBlockSpawn = new Timer(1);
-var tWinTimer = new Timer(3);
-var tRestartTimer = new Timer(3);
-
-var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
-var kReset = new InputHandler(["KeyR"], [], Infinity);
 
 //UPDATE
 
@@ -337,6 +335,12 @@ function Restart() {
 
 	str1 = "";
 	str2 = "";
+
+	tRotateHoveredBlock.off();
+	tBlockPlacementCooldown.off();
+	tNewBlockSpawn.off();
+	tRestartTimer.off();
+	tWinTimer.off();
 }
 
 function Unload() {
