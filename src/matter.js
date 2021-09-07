@@ -659,9 +659,7 @@ Composite.create = function (options) {
         parent: null,
         isModified: false,
         bodies: [],
-        composites: [],
-        label: 'Composite',
-        plugin: {}
+        composites: []
     }, options);
 };
 
@@ -732,9 +730,6 @@ Composite.remove = function (composite, object, deep) {
             case 'body':
                 Composite.removeBody(composite, obj, deep);
                 break;
-            case 'composite':
-                Composite.removeComposite(composite, obj, deep);
-                break;
 
         }
     }
@@ -753,31 +748,6 @@ Composite.addComposite = function (compositeA, compositeB) {
     Composite.setModified(compositeA, true, true, false);
     return compositeA;
 };
-
-
-Composite.removeComposite = function (compositeA, compositeB, deep) {
-    var position = Common.indexOf(compositeA.composites, compositeB);
-    if (position !== -1) {
-        Composite.removeCompositeAt(compositeA, position);
-        Composite.setModified(compositeA, true, true, false);
-    }
-
-    if (deep) {
-        for (var i = 0; i < compositeA.composites.length; i++) {
-            Composite.removeComposite(compositeA.composites[i], compositeB, true);
-        }
-    }
-
-    return compositeA;
-};
-
-
-Composite.removeCompositeAt = function (composite, position) {
-    composite.composites.splice(position, 1);
-    Composite.setModified(composite, true, true, false);
-    return composite;
-};
-
 
 Composite.addBody = function (composite, body) {
     composite.bodies.push(body);
@@ -809,29 +779,6 @@ Composite.removeBodyAt = function (composite, position) {
     return composite;
 };
 
-
-Composite.clear = function (composite, keepStatic, deep) {
-    if (deep) {
-        for (var i = 0; i < composite.composites.length; i++) {
-            Composite.clear(composite.composites[i], keepStatic, true);
-        }
-    }
-
-    if (keepStatic) {
-        composite.bodies = composite.bodies.filter(function (body) {
-            return body.isStatic;
-        });
-    } else {
-        composite.bodies.length = 0;
-    }
-
-    composite.composites.length = 0;
-    Composite.setModified(composite, true, true, false);
-
-    return composite;
-};
-
-
 Composite.allBodies = function (composite) {
     var bodies = [].concat(composite.bodies);
 
@@ -839,16 +786,6 @@ Composite.allBodies = function (composite) {
         bodies = bodies.concat(Composite.allBodies(composite.composites[i]));
 
     return bodies;
-};
-
-
-Composite.allComposites = function (composite) {
-    var composites = [].concat(composite.composites);
-
-    for (var i = 0; i < composite.composites.length; i++)
-        composites = composites.concat(Composite.allComposites(composite.composites[i]));
-
-    return composites;
 };
 
 var Body = {};
@@ -861,7 +798,6 @@ Body.create = function (options) {
     var defaults = {
         id: Common.nextId(),
         type: 'body',
-        label: 'Body',
         parts: [],
         plugin: {},
         angle: 0,
@@ -913,13 +849,7 @@ Body.create = function (options) {
             opacity: 1,
             strokeStyle: null,
             fillStyle: null,
-            lineWidth: null,
-            sprite: {
-                xScale: 1,
-                yScale: 1,
-                xOffset: 0,
-                yOffset: 0
-            }
+            lineWidth: null
         },
         events: null,
         bounds: null,
@@ -977,8 +907,6 @@ var _initProperties = function (body, options) {
     body.render.fillStyle = body.render.fillStyle || defaultFillStyle;
     body.render.strokeStyle = body.render.strokeStyle || defaultStrokeStyle;
     body.render.lineWidth = body.render.lineWidth || defaultLineWidth;
-    body.render.sprite.xOffset += -(body.bounds.min.x - body.position.x) / (body.bounds.max.x - body.bounds.min.x);
-    body.render.sprite.yOffset += -(body.bounds.min.y - body.position.y) / (body.bounds.max.y - body.bounds.min.y);
 };
 
 Body.set = function (body, settings, value) {
@@ -1012,23 +940,8 @@ Body.set = function (body, settings, value) {
             case 'vertices':
                 Body.setVertices(body, value);
                 break;
-            case 'position':
-                Body.setPosition(body, value);
-                break;
-            case 'angle':
-                Body.setAngle(body, value);
-                break;
-            case 'velocity':
-                Body.setVelocity(body, value);
-                break;
-            case 'angularVelocity':
-                Body.setAngularVelocity(body, value);
-                break;
             case 'parts':
                 Body.setParts(body, value);
-                break;
-            case 'centre':
-                Body.setCentre(body, value);
                 break;
             default:
                 body[property] = value;
@@ -1149,21 +1062,6 @@ Body.setParts = function (body, parts) {
 };
 
 
-Body.setCentre = function (body, centre, relative) {
-    if (!relative) {
-        body.positionPrev.x = centre.x - (body.position.x - body.positionPrev.x);
-        body.positionPrev.y = centre.y - (body.position.y - body.positionPrev.y);
-        body.position.x = centre.x;
-        body.position.y = centre.y;
-    } else {
-        body.positionPrev.x += centre.x;
-        body.positionPrev.y += centre.y;
-        body.position.x += centre.x;
-        body.position.y += centre.y;
-    }
-};
-
-
 Body.setPosition = function (body, position) {
     var delta = Vector.sub(position, body.position);
     body.positionPrev.x += delta.x;
@@ -1194,23 +1092,6 @@ Body.setAngle = function (body, angle) {
         }
     }
 };
-
-
-Body.setVelocity = function (body, velocity) {
-    body.positionPrev.x = body.position.x - velocity.x;
-    body.positionPrev.y = body.position.y - velocity.y;
-    body.velocity.x = velocity.x;
-    body.velocity.y = velocity.y;
-    body.speed = Vector.magnitude(body.velocity);
-};
-
-
-Body.setAngularVelocity = function (body, velocity) {
-    body.anglePrev = body.angle - velocity;
-    body.angularVelocity = velocity;
-    body.angularSpeed = Math.abs(body.angularVelocity);
-};
-
 
 Body.translate = function (body, translation) {
     Body.setPosition(body, Vector.add(body.position, translation));
@@ -1505,7 +1386,6 @@ Bodies.polygon = function (x, y, sides, radius, options, half = false) {
     }
 
     var polygon = {
-        label: 'Polygon Body',
         position: {
             x: x,
             y: y
@@ -1625,14 +1505,6 @@ Mouse.create = function (element) {
         x: 0,
         y: 0
     };
-    mouse.mousedownPosition = {
-        x: 0,
-        y: 0
-    };
-    mouse.mouseupPosition = {
-        x: 0,
-        y: 0
-    };
     mouse.offset = {
         x: 0,
         y: 0
@@ -1683,8 +1555,6 @@ Mouse.create = function (element) {
         mouse.absolute.y = position.y;
         mouse.position.x = mouse.absolute.x * mouse.scale.x + mouse.offset.x;
         mouse.position.y = mouse.absolute.y * mouse.scale.y + mouse.offset.y;
-        mouse.mousedownPosition.x = mouse.position.x;
-        mouse.mousedownPosition.y = mouse.position.y;
         mouse.sourceEvents.mousedown = event;
     };
 
@@ -1701,8 +1571,6 @@ Mouse.create = function (element) {
         mouse.absolute.y = position.y;
         mouse.position.x = mouse.absolute.x * mouse.scale.x + mouse.offset.x;
         mouse.position.y = mouse.absolute.y * mouse.scale.y + mouse.offset.y;
-        mouse.mouseupPosition.x = mouse.position.x;
-        mouse.mouseupPosition.y = mouse.position.y;
         mouse.sourceEvents.mouseup = event;
     };
 
@@ -1731,16 +1599,6 @@ Mouse.setElement = function (mouse, element) {
     element.addEventListener('touchstart', mouse.mousedown);
     element.addEventListener('touchend', mouse.mouseup);
 };
-
-
-Mouse.clearSourceEvents = function (mouse) {
-    mouse.sourceEvents.mousemove = null;
-    mouse.sourceEvents.mousedown = null;
-    mouse.sourceEvents.mouseup = null;
-    mouse.sourceEvents.mousewheel = null;
-    mouse.wheelDelta = 0;
-};
-
 
 Mouse.setOffset = function (mouse, offset) {
     mouse.offset.x = offset.x;
@@ -2295,7 +2153,6 @@ Engine.create = function (options) {
         velocityIterations: 4,
         constraintIterations: 2,
         events: [],
-        plugin: {},
         grid: null,
         gravity: {
             x: 0,
@@ -2312,9 +2169,7 @@ Engine.create = function (options) {
 
     var engine = Common.extend(defaults, options);
 
-    engine.world = options.world || Composite.create({
-        label: 'World'
-    });
+    engine.world = options.world || Composite.create();
     engine.grid = Grid.create(options.grid || options.broadphase);
     engine.pairs = Pairs.create();
 
@@ -2411,16 +2266,6 @@ Engine.update = function (engine, delta, correction) {
 
     return engine;
 };
-
-Engine.clear = function (engine) {
-    var world = engine.world,
-        bodies = Composite.allBodies(world);
-
-    Pairs.clear(engine.pairs);
-    Grid.clear(engine.grid);
-    Grid.update(engine.grid, bodies, engine, true);
-};
-
 
 Engine._bodiesClearForces = function (bodies) {
     for (var i = 0; i < bodies.length; i++) {
