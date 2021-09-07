@@ -119,7 +119,7 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 	var bod = Bodies.fromVertices(x,y,vertexArray);
 
-	Body.setAngle(bod, ang);
+	Bd.setAngle(bod, ang);
 
 	bod.friction = 0.125;
 	bod.density = 0.005;
@@ -172,7 +172,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		const rotateAngle = 0.0002;
 		for(var i = 0; i != stars.length; i++) {
 			var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, stars[i].position.x, stars[i].position.y, rotateAngle);
-			Body.setPosition(stars[i], newPos);
+			Bd.setPosition(stars[i], newPos);
 		}
 
 		if (!tRotateHoveredBlock.running) {
@@ -191,7 +191,7 @@ Events.on(engine, 'beforeUpdate', function() {
 		var previewBlockPos = {x: render.bounds.max.x - 75, y: render.bounds.min.y + 75}
 
 		if (previewBlock) {
-			Body.setPosition(previewBlock, previewBlockPos);
+			Bd.setPosition(previewBlock, previewBlockPos);
 		}
 
 		if (hoverPreview) {
@@ -206,8 +206,8 @@ Events.on(engine, 'beforeUpdate', function() {
 				previewBlock.render.opacity = .5 * progress;
 			}
 
-			Body.setPosition(hoverPreview, position);
-			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			Bd.setPosition(hoverPreview, position);
+			Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
 			);
 
@@ -269,7 +269,7 @@ Events.on(engine, 'beforeUpdate', function() {
 			}
 			hoverAngle = 0;
 
-			Body.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
 			tNewBlockSpawn.start();
@@ -355,7 +355,7 @@ function Unload() {
 
 function Load(nr) {
 	curLevel = nr;
-	lvlData = levels[nr];
+	var lvlData = levels[nr];
 
 	if (planet) {
 		Composite.removeBody(world, planet);
@@ -422,8 +422,8 @@ function Load(nr) {
 			}, sld[2] < 0
 		)
 		
-		Body.setAngle(plat, sld[4] * (Math.PI/180))
-		Body.scale(plat, sld[5], sld[6]);
+		Bd.setAngle(plat, sld[4] * (Math.PI/180))
+		Bd.scale(plat, sld[5], sld[6]);
 		
 		Composite.add(world, plat);
 		solidPlats.push(plat);
