@@ -75,10 +75,10 @@ var stars = [];
 const RANGE = 1000;
 for (var i = 0; i != 100; i++) {
 	var bod = Bodies.polygon(
-		planet.position.x + Common.random(-RANGE, RANGE),
-		planet.position.y + Common.random(-RANGE, RANGE),
-		Common.random(3,5),
-		Common.random(2,5)
+		planet.position.x + -RANGE + Math.random() * RANGE * 2,
+		planet.position.y + -RANGE + Math.random() * RANGE * 2,
+		3 + Math.random() * 2,
+		2 + Math.random() * 3
 	);
 
 	bod.isSensor = true;
