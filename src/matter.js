@@ -1789,6 +1789,9 @@ Detector.collisions = function (broadphasePairs, engine) {
         var bodyA = broadphasePairs[i][0],
             bodyB = broadphasePairs[i][1];
 
+        if ((bodyA.isStatic) && (bodyB.isStatic))
+            continue;
+
         if (!Detector.canCollide(bodyA.collisionFilter, bodyB.collisionFilter))
             continue;
 
@@ -2441,8 +2444,12 @@ Engine._bodiesApplyGravity = function (bodies, gravity) {
     for (var i = 0; i < bodies.length; i++) {
         var bod = bodies[i];
 
-        bod.force.y += bod.mass * gravity.y * gravityScale;
-        bod.force.x += bod.mass * gravity.x * gravityScale;
+        if (bod.isStatic)
+            continue;
+
+
+            bod.force.y += bod.mass * gravity.y * gravityScale;
+            bod.force.x += bod.mass * gravity.x * gravityScale;
     }
 };
 
@@ -2904,10 +2911,6 @@ Grid.update = function (grid, bodies, engine, forceUpdate) {
 
     for (i = 0; i < bodies.length; i++) {
         var bod = bodies[i];
-
-        if (!forceUpdate)
-            continue;
-
 
         if (world.bounds && (bod.bounds.max.x < world.bounds.min.x || bod.bounds.min.x > world.bounds.max.x ||
                 bod.bounds.max.y < world.bounds.min.y || bod.bounds.min.y > world.bounds.max.y))
