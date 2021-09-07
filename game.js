@@ -48,6 +48,10 @@ var hoverAngle = 0;
 
 var mouse = Mouse.create(render.canvas);
 
+var paused = false;
+var blocksLeft = 3;
+var state = 0; //0 = normal, 1 = won, -1 = lost.
+
 resize();
 
 Load(0);
@@ -122,8 +126,10 @@ var tRotateHoveredBlock = new Timer(0.15);
 var prevRotation = 0;
 var rotateAppend = 0;
 
-var tBlockPlacementCooldown = new Timer(2);
+var tBlockPlacementCooldown = new Timer(1.5);
 var tNewBlockSpawn = new Timer(1);
+var tWinTimer = new Timer(3);
+var tRestartTimer = new Timer(3);
 
 var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 var kReset = new InputHandler(["KeyR"], [], Infinity);
@@ -138,12 +144,31 @@ Events.on(engine, 'beforeUpdate', function() {
 		tRotateHoveredBlock.update(fps);
 		tBlockPlacementCooldown.update(fps);
 		tNewBlockSpawn.update(fps);
+		tRestartTimer.update(fps);
+		tWinTimer.update(fps);
 
 		kRotate.update(fps);
 		kReset.update(fps);
 
 		if (kReset.fired) {
 			Restart();
+		}
+
+		if (tRestartTimer.finishedThisFrame && state == -1) {
+			Restart();
+		}
+
+		if (tWinTimer.running && state == 0) {
+			if (tWinTimer.finishedThisFrame) {
+				state = 1;
+				paused = true;
+				str1 = "Tower stable — You win!";
+				str2 = "Click to continue";
+			} else {
+				var p = Math.floor(EaseInOut(tWinTimer.normalized()) * 100);
+				str1 = "Stability: "+p+"%";
+				str2 = "Stay steady...";
+			}
 		}
 
 		const rotateAngle = 0.0002;
@@ -224,7 +249,7 @@ Events.on(engine, 'beforeUpdate', function() {
 					tBlockPlacementCooldown.start();
 
 					if (blocksLeft <= 0) {
-						//QQQ Start countdown
+						tWinTimer.start();
 					}
 				}
 			} else if (mouse.button == -1 && mouseDown) {
@@ -237,7 +262,7 @@ Events.on(engine, 'beforeUpdate', function() {
 			hoverVertices = previewVertices;
 			hoverPreview = previewBlock;
 
-			if (blocksLeft > 0) {
+			if (blocksLeft >= 1) {
 				blocksLeft--;
 
 				previewVertices = randomFromArray(blockSelection, hoverPreview);
@@ -262,6 +287,22 @@ Events.on(engine, 'beforeUpdate', function() {
 				str1 = "Oops!";
 				str2 = "Block fell into core of planet.";
 
+				state = -1;
+
+				if (previewBlock) {
+					Composite.removeBody(world, previewBlock);
+				}
+			
+				if (hoverPreview) {
+					Composite.removeBody(world, hoverPreview);
+				}
+
+				tRotateHoveredBlock.off();
+				tBlockPlacementCooldown.off();
+				tNewBlockSpawn.off();
+
+				tRestartTimer.start();
+
 				break;
 				//QQQ SFX
 			}
@@ -278,7 +319,7 @@ function Restart() {
 	hoverAngle = 0;
 	state = 0;
 	paused = false;
-	blocksLeft = totalBlocks;
+	blocksLeft = totalBlocks-1;
 
 	if (previewBlock) {
 		Composite.removeBody(world, previewBlock);
@@ -293,6 +334,9 @@ function Restart() {
 
 	hoverVertices = randomFromArray(blockSelection, previewVertices);
 	hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
+
+	str1 = "";
+	str2 = "";
 }
 
 function Unload() {
@@ -393,10 +437,6 @@ function RotateBlock(rotateDelta) {
 
 //LIFECYCLE
 
-var paused = false;
-var blocksLeft = 3;
-var state = 0; //0 = normal, 1 = won, -1 = lost.
-
 function run() {
 	window.requestAnimationFrame(run);
 
@@ -423,10 +463,13 @@ function run() {
 	context.strokeText(str2, 0, h - 25);
 	context.fillText(str2, 0, h - 25);
 
-	var str = blocksLeft + " left";
-	context.font="small-caps bold 24px monospace";
-	context.strokeText(str, w - 75, -h + 150);
-	context.fillText(str, w - 75, -h + 150);
+		
+	if (state == 0) {
+		var str = blocksLeft + " left";
+		context.font="small-caps bold 24px monospace";
+		context.strokeText(str, w - 75, -h + 150);
+		context.fillText(str, w - 75, -h + 150);
+	}
 };
 
 window.onresize = function() {

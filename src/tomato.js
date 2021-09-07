@@ -2,11 +2,8 @@
 
 class Timer {
 	constructor(timerDuration) {
-		this.timer = 0;
 		this.timerCap = timerDuration;
-
-		this.running = false;
-		this.finishedThisFrame = false;
+		this.off();
 	}
 
 	start() {
@@ -16,6 +13,12 @@ class Timer {
 
 	normalized() {
 		return this.timer / this.timerCap;
+	}
+
+	off() {
+		this.timer = 0;
+		this.running = false;
+		this.finishedThisFrame = false;
 	}
 
 	update(currentFrameLength) {
