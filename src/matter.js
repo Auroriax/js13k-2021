@@ -350,9 +350,9 @@ Vector.angle = function (vectorA, vectorB) {
 
 
 Vector._temp = [
-    Vector.create(), Vector.create(),
-    Vector.create(), Vector.create(),
-    Vector.create(), Vector.create()
+    Vector.create(0, 0), Vector.create(0, 0),
+    Vector.create(0, 0), Vector.create(0, 0),
+    Vector.create(0, 0), Vector.create(0, 0)
 ];
 
 var Vertices = {};
@@ -849,20 +849,20 @@ var _initProperties = function (body, options) {
     body.render.lineWidth = body.render.lineWidth || defaultLineWidth;
 };
 
-Bd.set = function (body, settings, value) {
+Bd.set = function (body, settings) {
     var property;
 
     if (typeof settings === 'string') {
         property = settings;
         settings = {};
-        settings[property] = value;
+        //settings[property] = value;
     }
 
     for (property in settings) {
         if (!Object.prototype.hasOwnProperty.call(settings, property))
             continue;
 
-        value = settings[property];
+        var value = settings[property];
         switch (property) {
 
             case 'isStatic':

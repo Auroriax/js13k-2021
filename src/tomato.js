@@ -3,7 +3,9 @@
 class Timer {
 	constructor(timerDuration) {
 		this.timerCap = timerDuration;
-		this.off();
+		this.timer = 0;
+		this.running = false;
+		this.finishedThisFrame = false;
 	}
 
 	start() {
