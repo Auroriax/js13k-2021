@@ -12,6 +12,8 @@ var tRestartTimer = new Timer(3);
 var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 var kReset = new InputHandler(["KeyR"], [], Infinity);
 
+var kBrowse = new InputHandler(["KeyN"], ["KeyB"], Infinity);
+
 var engine = Engine.create();
 
 var canvas = document.getElementById("gameCanvas");
@@ -66,7 +68,7 @@ var state = 0; //0 = normal, 1 = won, -1 = lost.
 
 resize();
 
-Load(0);
+Load(curLevel);
 
 mouse.position = {x: 0, y: -1};
 
@@ -93,8 +95,6 @@ for (var i = 0; i != 100; i++) {
 }
 
 function CreateSensor(x, y, ang, vertices, preview) {
-	console.log("Adding phantom block");
-
 	var bod = Bodies.fromVertices(x,y,vertices);
 
 	bod.isSensor = true;
@@ -115,13 +115,11 @@ function CreateSensor(x, y, ang, vertices, preview) {
 }
 
 function CreateBlock(x, y, ang, vertexArray) {
-	console.log("Adding actual block");
-
 	var bod = Bodies.fromVertices(x,y,vertexArray);
 
 	Bd.setAngle(bod, ang);
 
-	bod.friction = 0.125;
+	bod.friction = 0.8;
 	bod.density = 0.005;
 
 	bod.render.fillStyle = "#dddddd";
@@ -147,6 +145,12 @@ Events.on(engine, 'beforeUpdate', function() {
 
 		kRotate.update(fps);
 		kReset.update(fps);
+		kBrowse.update(fps);
+
+		if (kBrowse.fired) {
+			Unload();
+			Load(curLevel + kBrowse.delta);
+		}
 
 		if (kReset.fired) {
 			Restart();
@@ -158,6 +162,7 @@ Events.on(engine, 'beforeUpdate', function() {
 
 		if (tWinTimer.running && state == 0) {
 			if (tWinTimer.finishedThisFrame) {
+				mouse.button = 0;
 				state = 1;
 				paused = true;
 				str1 = "Tower stable — You win!";
@@ -165,7 +170,6 @@ Events.on(engine, 'beforeUpdate', function() {
 			} else {
 				var p = Math.floor(EaseInOut(tWinTimer.normalized()) * 100);
 				str1 = "Stability: "+p+"%";
-				str2 = "Stay steady...";
 			}
 		}
 
@@ -179,7 +183,6 @@ Events.on(engine, 'beforeUpdate', function() {
 			if (kRotate.fired) {
 				RotateBlock(-kRotate.delta);
 			} else if (mouse.wheelDelta) {
-				console.log(mouse.wheelDelta);
 				RotateBlock(mouse.wheelDelta);
 				mouse.wheelDelta = 0;
 			}
@@ -237,7 +240,7 @@ Events.on(engine, 'beforeUpdate', function() {
 	
 			hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
 
-			if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown) {
+			if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown && state == 0) {
 				mouseDown = true;
 	
 				if (!colliding) {
@@ -245,9 +248,9 @@ Events.on(engine, 'beforeUpdate', function() {
 					Composite.remove(world, hoverPreview);
 					hoverPreview = null;
 					tBlockPlacementCooldown.start();
-
 					if (blocksLeft <= 0) {
-						tWinTimer.start();
+						str1 = "Stability: 0%";
+						str2 = "Stay steady...";
 					}
 				}
 			} else if (mouse.button == -1 && mouseDown) {
@@ -257,52 +260,56 @@ Events.on(engine, 'beforeUpdate', function() {
 
 		if (tBlockPlacementCooldown.finishedThisFrame) {
 
-			hoverVertices = previewVertices;
-			hoverPreview = previewBlock;
+			if (blocksLeft <= 0) {
+				tWinTimer.start();
+			} else {
+				hoverVertices = previewVertices;
+				hoverPreview = previewBlock;
 
-			if (blocksLeft >= 1) {
 				blocksLeft--;
 
-				previewVertices = randomFromArray(blockSelection, hoverPreview);
-				previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
-				previewBlock.render.opacity = 0;
+				if (blocksLeft >= 1) {
+					previewVertices = randomFromArray(blockSelection, hoverPreview);
+					previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
+					previewBlock.render.opacity = 0;
+				}
+				hoverAngle = 0;
+
+				Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+					hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
+
+				tNewBlockSpawn.start();
 			}
-			hoverAngle = 0;
-
-			Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
-				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
-
-			tNewBlockSpawn.start();
 		}
 
-		//LOST CHECK
-		for (var i = 0; i != placedBlocks.length; i++) {
-			if (SAT.collides(placedBlocks[i], planet).collided) {
-				Composite.removeBody(world, placedBlocks[i]); 
+		if (state == 0) {
+			//LOST CHECK
+			for (var i = 0; i != placedBlocks.length; i++) {
+				if (SAT.collides(placedBlocks[i], planet).collided) {
 
-				placedBlocks.splice(i);
+					console.log(placedBlocks);
 
-				str1 = "Oops!";
-				str2 = "Block fell into core of planet.";
+						str1 = "Oops!";
+						str2 = "Block fell into core of planet.";
 
-				state = -1;
+						state = -1;
 
-				if (previewBlock) {
-					Composite.removeBody(world, previewBlock);
+						if (previewBlock) {
+							Composite.removeBody(world, previewBlock);
+						}
+					
+						if (hoverPreview) {
+							Composite.removeBody(world, hoverPreview);
+						}
+
+						tRotateHoveredBlock.off();
+						tBlockPlacementCooldown.off();
+						tNewBlockSpawn.off();
+
+						tRestartTimer.start();
+
+					break;
 				}
-			
-				if (hoverPreview) {
-					Composite.removeBody(world, hoverPreview);
-				}
-
-				tRotateHoveredBlock.off();
-				tBlockPlacementCooldown.off();
-				tNewBlockSpawn.off();
-
-				tRestartTimer.start();
-
-				break;
-				//QQQ SFX
 			}
 		}
 });
@@ -334,7 +341,7 @@ function Restart() {
 	hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
 
 	str1 = "";
-	str2 = "";
+	str2 = "Level "+(curLevel+1)+"/"+levels.length;
 
 	tRotateHoveredBlock.off();
 	tBlockPlacementCooldown.off();
@@ -354,6 +361,8 @@ function Unload() {
 }
 
 function Load(nr) {
+	nr = Common.clamp(nr, 0, levels.length-1)
+
 	curLevel = nr;
 	var lvlData = levels[nr];
 
@@ -421,9 +430,11 @@ function Load(nr) {
 				isStatic: true
 			}, sld[2] < 0
 		)
+
+		plat.friction = 0.8;
 		
-		Bd.setAngle(plat, sld[4] * (Math.PI/180))
 		Bd.scale(plat, sld[5], sld[6]);
+		Bd.setAngle(plat, sld[4] * (Math.PI/180))
 		
 		Composite.add(world, plat);
 		solidPlats.push(plat);
@@ -449,6 +460,10 @@ function run() {
 
 		Engine.update(engine, 1000 / 30);
 		Render.world(render);
+	} else {
+		if (mouse.button == -1) {
+			Load(curLevel++); //QQQ Game finished?
+		}
 	}
 
 	context.textAlign = "center";
