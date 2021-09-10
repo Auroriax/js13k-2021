@@ -543,53 +543,6 @@ Vertices.clockwiseSort = function (vertices) {
     return vertices;
 };
 
-var Events = {};
-
-Events.on = function (object, eventNames, callback) {
-    var names = eventNames.split(' '),
-        name;
-
-    for (var i = 0; i < names.length; i++) {
-        name = names[i];
-        object.events = object.events || {};
-        object.events[name] = object.events[name] || [];
-        object.events[name].push(callback);
-    }
-
-    return callback;
-};
-
-Events.trigger = function (object, eventNames, event) {
-    var names,
-        name,
-        callbacks,
-        eventClone;
-
-    var events = object.events;
-
-    if (events && Common.keys(events).length > 0) {
-        if (!event)
-            event = {};
-
-        names = eventNames.split(' ');
-
-        for (var i = 0; i < names.length; i++) {
-            name = names[i];
-            callbacks = events[name];
-
-            if (callbacks) {
-                eventClone = Common.clone(event, false);
-                eventClone.name = name;
-                eventClone.source = object;
-
-                for (var j = 0; j < callbacks.length; j++) {
-                    callbacks[j].apply(object, [eventClone]);
-                }
-            }
-        }
-    }
-};
-
 var Composite = {};
 
 Composite.create = function (options) {
@@ -623,10 +576,6 @@ Composite.setModified = function (composite, isModified, updateParents, updateCh
 Composite.add = function (composite, object) {
     var objects = [].concat(object);
 
-    Events.trigger(composite, 'beforeAdd', {
-        object: object
-    });
-
     for (var i = 0; i < objects.length; i++) {
         var obj = objects[i];
 
@@ -640,16 +589,8 @@ Composite.add = function (composite, object) {
 
                 Composite.addBody(composite, obj);
                 break;
-            case 'composite':
-                Composite.addComposite(composite, obj);
-                break;
-
         }
     }
-
-    Events.trigger(composite, 'afterAdd', {
-        object: object
-    });
 
     return composite;
 };
@@ -657,10 +598,6 @@ Composite.add = function (composite, object) {
 
 Composite.remove = function (composite, object, deep) {
     var objects = [].concat(object);
-
-    Events.trigger(composite, 'beforeRemove', {
-        object: object
-    });
 
     for (var i = 0; i < objects.length; i++) {
         var obj = objects[i];
@@ -674,19 +611,7 @@ Composite.remove = function (composite, object, deep) {
         }
     }
 
-    Events.trigger(composite, 'afterRemove', {
-        object: object
-    });
-
     return composite;
-};
-
-
-Composite.addComposite = function (compositeA, compositeB) {
-    compositeA.composites.push(compositeB);
-    compositeB.parent = compositeA;
-    Composite.setModified(compositeA, true, true, false);
-    return compositeA;
 };
 
 Composite.addBody = function (composite, body) {
@@ -793,7 +718,7 @@ Bd.create = function (options) {
         },
         events: null,
         bounds: null,
-        chamfer: null,
+        autorot: 0,
         circleRadius: 0,
         positionPrev: null,
         anglePrev: 0,
@@ -1958,9 +1883,6 @@ Render.world = function (render, time) {
         timestamp: engine.timing.timestamp
     };
 
-    Events.trigger(render, 'beforeRender', event);
-
-
     if (render.currentBackground !== background)
         _applyBackground(render, background);
 
@@ -1983,8 +1905,6 @@ Render.world = function (render, time) {
     }
 
     Render.bodies(render, bodies, context);
-
-    Events.trigger(render, 'afterRender', event);
 
     timing.lastElapsed = Common.now() - startTime;
 };
@@ -2140,8 +2060,6 @@ Engine.update = function (engine, delta, correction) {
         timestamp: timing.timestamp
     };
 
-    Events.trigger(engine, 'beforeUpdate', event);
-
     var allBodies = Composite.allBodies(world);
 
     Engine._bodiesApplyGravity(allBodies, engine.gravity);
@@ -2169,12 +2087,6 @@ Engine.update = function (engine, delta, correction) {
     Pairs.update(pairs, collisions, timestamp);
     Pairs.removeOld(pairs, timestamp);
 
-    if (pairs.collisionStart.length > 0)
-        Events.trigger(engine, 'collisionStart', {
-            pairs: pairs.collisionStart
-        });
-
-
     Resolver.preSolvePosition(pairs.list);
     for (i = 0; i < engine.positionIterations; i++) {
         Resolver.solvePosition(pairs.list, timing.timeScale);
@@ -2186,19 +2098,7 @@ Engine.update = function (engine, delta, correction) {
         Resolver.solveVelocity(pairs.list, timing.timeScale);
     }
 
-    if (pairs.collisionActive.length > 0)
-        Events.trigger(engine, 'collisionActive', {
-            pairs: pairs.collisionActive
-        });
-
-    if (pairs.collisionEnd.length > 0)
-        Events.trigger(engine, 'collisionEnd', {
-            pairs: pairs.collisionEnd
-        });
-
     Engine._bodiesClearForces(allBodies);
-
-    Events.trigger(engine, 'afterUpdate', event);
 
     engine.timing.lastElapsed = Common.now() - startTime;
 
