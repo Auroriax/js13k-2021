@@ -66,24 +66,6 @@ Common.values = function (obj) {
     return values;
 };
 
-Common.isElement = function (obj) {
-    if (typeof HTMLElement !== 'undefined') {
-        return obj instanceof HTMLElement;
-    }
-
-    return !!(obj && obj.nodeType && obj.nodeName);
-};
-
-
-Common.isArray = function (obj) {
-    return Object.prototype.toString.call(obj) === '[object Array]';
-};
-
-
-Common.isFunction = function (obj) {
-    return typeof obj === "function";
-};
-
 Common.clamp = function (value, min, max) {
     if (value < min)
         return min;
@@ -99,13 +81,13 @@ Common.sign = function (value) {
 
 
 Common.now = function () {
-    if (typeof window !== 'undefined' && window.performance) {
+    /*if (typeof window !== 'undefined' && window.performance) {
         if (window.performance.now) {
             return window.performance.now();
         } else if (window.performance.webkitNow) {
             return window.performance.webkitNow();
         }
-    }
+    }*/
 
     if (Date.now) {
         return Date.now();
@@ -545,7 +527,6 @@ var Composite = {};
 Composite.create = function () {
     return {
         id: Common.nextId(),
-        type: 'composite',
         parent: null,
         isModified: false,
         bodies: [],
@@ -576,17 +557,11 @@ Composite.add = function (composite, object) {
     for (var i = 0; i < objects.length; i++) {
         var obj = objects[i];
 
-        switch (obj.type) {
-
-            case 'body':
-
-                if (obj.parent !== obj) {
-                    break;
-                }
-
-                Composite.addBody(composite, obj);
-                break;
+        if (obj.parent !== obj) {
+            break;
         }
+
+        Composite.addBody(composite, obj);
     }
 
     return composite;
@@ -599,13 +574,7 @@ Composite.remove = function (composite, object) {
     for (var i = 0; i < objects.length; i++) {
         var obj = objects[i];
 
-        switch (obj.type) {
-
-            case 'body':
-                Composite.removeBody(composite, obj);
-                break;
-
-        }
+        Composite.removeBody(composite, obj);
     }
 
     return composite;
@@ -653,7 +622,6 @@ Bd._nextCategory = 0x0001;
 Bd.create = function (options) {
     var defaults = {
         id: Common.nextId(),
-        type: 'body',
         parts: [],
         plugin: {},
         angle: 0,
@@ -734,14 +702,16 @@ var _initProperties = function (body, options) {
         anglePrev: body.anglePrev || body.angle,
         vertices: body.vertices,
         parts: body.parts || [body],
-        isStatic: body.isStatic,
         parent: body.parent || body
     });
+
+    Bd.setVertices(body, body.vertices)
+    Bd.setStatic(body, body.isStatic);
+    Bd.setParts(body, body.parts);
 
     Vertices.rotate(body.vertices, body.angle, body.position);
     Axes.rotate(body.axes, body.angle);
     Bounds.update(body.bounds, body.vertices, body.velocity);
-
 
     Bd.set(body, {
         axes: options.axes || body.axes,
@@ -750,6 +720,8 @@ var _initProperties = function (body, options) {
         inertia: options.inertia || body.inertia
     });
 
+    Bd.setMass(body, body.mass);
+    Bd.setInertia(body, body.inertia)
 
     var defaultFillStyle = '#14151f',
         defaultStrokeStyle = '#555',
@@ -762,41 +734,12 @@ var _initProperties = function (body, options) {
 Bd.set = function (body, settings) {
     var property;
 
-    if (typeof settings === 'string') {
-        property = settings;
-        settings = {};
-        //settings[property] = value;
-    }
-
     for (property in settings) {
         if (!Object.prototype.hasOwnProperty.call(settings, property))
             continue;
 
         var value = settings[property];
-        switch (property) {
-
-            case 'isStatic':
-                Bd.setStatic(body, value);
-                break;
-            case 'mass':
-                Bd.setMass(body, value);
-                break;
-            case 'density':
-                Bd.setDensity(body, value);
-                break;
-            case 'inertia':
-                Bd.setInertia(body, value);
-                break;
-            case 'vertices':
-                Bd.setVertices(body, value);
-                break;
-            case 'parts':
-                Bd.setParts(body, value);
-                break;
-            default:
-                body[property] = value;
-
-        }
+        body[property] = value;
     }
 };
 
@@ -1257,9 +1200,7 @@ Bodies.fromVertices = function (x, y, vertexSets) {
     var options = {};
     parts = [];
 
-    if (!Common.isArray(vertexSets[0])) {
-        vertexSets = [vertexSets];
-    }
+    vertexSets = [vertexSets];
 
     for (v = 0; v < vertexSets.length; v += 1) {
         vertices = vertexSets[v];
@@ -1783,10 +1724,6 @@ Render.create = function (options) {
             y: render.canvas.height
         }
     };
-
-    if (Common.isElement(render.element)) {
-        render.element.appendChild(render.canvas);
-    }
 
     return render;
 };
@@ -2663,9 +2600,7 @@ var MatterAttractors = {
                         var attractor = attractors[k],
                             forceVector = attractor;
 
-                        if (Common.isFunction(attractor)) {
-                            forceVector = attractor(bodyA, bodyB);
-                        }
+                        forceVector = attractor(bodyA, bodyB);
 
                         if (forceVector) {
                             Bd.applyForce(bodyB, bodyB.position, forceVector);
