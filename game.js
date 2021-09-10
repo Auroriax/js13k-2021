@@ -37,7 +37,6 @@ var str1 = "Celestial Lighthouse";
 var str2 = "by Tom Hermans for js13k 2021, built using Matter.js";
 
 var world = engine.world;
-engine.gravity.scale = 0;
 
 var gradient = context.createLinearGradient(0, 0, 800, 800);
 gradient.addColorStop("0", "white");
@@ -77,17 +76,21 @@ var stars = [];
 const RANGE = 1000;
 for (var i = 0; i != 100; i++) {
 	var bod = Bodies.polygon(
-		planet.position.x + -RANGE + Math.random() * RANGE * 2,
-		planet.position.y + -RANGE + Math.random() * RANGE * 2,
+		-RANGE + Math.random() * RANGE * 2,
+		-RANGE + Math.random() * RANGE * 2,
 		3 + Math.random() * 2,
-		2 + Math.random() * 3
+		2 + Math.random() * 3,
+		{
+			isSensor: true,
+			isStatic: true,
+			render: {
+				strokeStyle: "#dddddd",
+				fillStyle: "#33333344",
+				lineWidth: 1
+			}
+		}
 	);
 
-	bod.isSensor = true;
-	bod.isStatic = true;
-	bod.render.strokeStyle = "#dddddd";
-	bod.render.fillStyle = "#33333344";
-	bod.render.lineWidth = 1;
 	bod.collisionFilter.group = 1;
 	//Bd.setDensity(bod, 0.05);
 
@@ -137,144 +140,6 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 var mouseDown = false;
 
-function Restart() {
-	for (var i = 0; i != placedBlocks.length; i++) {
-		Composite.removeBody(world, placedBlocks[i]);
-	}
-
-	placedBlocks.length = 0;
-
-	hoverAngle = 0;
-	state = 0;
-	paused = false;
-	blocksLeft = totalBlocks-1;
-
-	if (previewBlock) {
-		Composite.removeBody(world, previewBlock);
-	}
-
-	if (hoverPreview) {
-		Composite.removeBody(world, hoverPreview);
-	}
-
-	previewVertices = randomFromArray(blockSelection);
-	previewBlock = CreateSensor(planet.position.x, planet.position.y, 180, previewVertices, true);
-
-	hoverVertices = randomFromArray(blockSelection, previewVertices);
-	hoverPreview = CreateSensor(planet.position.x, planet.position.y, 0, hoverVertices, false);
-
-	str1 = "";
-	str2 = "Level "+(curLevel+1)+"/"+levels.length;
-
-	tRotateHoveredBlock.off();
-	tBlockPlacementCooldown.off();
-	tNewBlockSpawn.off();
-	tRestartTimer.off();
-	tWinTimer.off();
-}
-
-function Unload() {
-	Restart();
-
-	for (var i = 0; i != solidPlats.length; i++) {
-		Composite.removeBody(world, solidPlats[i]);
-	}
-
-	solidPlats.length = 0;
-}
-
-function Load(nr) {
-	nr = Common.clamp(nr, 0, levels.length-1)
-
-	curLevel = nr;
-	var lvlData = levels[nr];
-
-	if (planet) {
-		Composite.removeBody(world, planet);
-	}
-
-	if (atmosphere) {
-		Composite.removeBody(world, atmosphere);
-	}
-
-	totalBlocks = lvlData[0];
-	blockSelection = lvlData[3];
-
-	// create a body with an attractor
-	planet = Bodies.polygon(
-		0,
-		0,
-		100,
-		lvlData[1], 
-		{
-		isStatic: true,
-		isSensor: true,
-
-		// example of an attractor function that 
-		// returns a force vector that applies to bodyB
-		plugin: {
-			attractors: [
-				function(bodyA, bodyB) {
-					return {
-						x: (bodyA.position.x - bodyB.position.x) * 0.0000005,
-						y: (bodyA.position.y - bodyB.position.y) * 0.0000005,
-					};
-				}
-			]
-		},
-	}
-	);
-
-	planet.render.fillStyle = "#CD0E0E";
-	Composite.add(world, planet);
-
-	atmosphere = Bodies.polygon(
-		0,
-		0,
-		100,
-		lvlData[2],
-		{
-		isStatic: true,
-		isSensor: true
-	},
-	);
-	
-	atmosphere.render.fillStyle = "#00000000";
-	
-	atmosphere.render.strokeStyle = gradient;
-	atmosphere.render.lineWidth = 3;
-	atmosphere.render.opacity = 0.3;
-	Composite.add(world, atmosphere);
-
-	for(var i = 0; i != lvlData[4].length; i++) {
-		var sld = lvlData[4][i];
-		var plat = Bodies.polygon(
-			sld[0], sld[1], Math.abs(sld[2]), sld[3], {
-				isStatic: true
-			}, sld[2] < 0
-		)
-
-		plat.friction = 0.8;
-		
-		Bd.scale(plat, sld[5], sld[6]);
-		Bd.setAngle(plat, sld[4] * (Math.PI/180))
-
-		plat.autorot = sld[7];
-		
-		Composite.add(world, plat);
-		solidPlats.push(plat);
-	}
-
-	Restart();
-}
-
-function RotateBlock(rotateDelta) {
-	prevRotation = hoverAngle;
-	rotateAppend = Math.sign(rotateDelta) * (1 / 6) * Math.PI;
-	tRotateHoveredBlock.start();
-	//console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
-}
-
 //LIFECYCLE
 
 function run() {
@@ -283,7 +148,7 @@ function run() {
 	const rotateAngle = 0.0002;
 	for(var i = 0; i != stars.length; i++) {
 		var star = stars[i];
-		var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, star.position.x, star.position.y, rotateAngle);
+		var newPos = rotateAroundPointRadians(0, 0, star.position.x, star.position.y, rotateAngle);
 		Bd.setPosition(star, newPos);
 		Bd.setAngle(star, star.angle -rotateAngle);
 	}
@@ -331,7 +196,7 @@ function run() {
 		for(var i = 0; i != solidPlats.length; i++) {
 			var block = solidPlats[i];
 			if (block.autorot && block.autorot != 0) {
-				var newPos = rotateAroundPointRadians(planet.position.x, planet.position.y, block.position.x, block.position.y, block.autorot);
+				var newPos = rotateAroundPointRadians(0, 0, block.position.x, block.position.y, block.autorot);
 				Bd.setPosition(block, newPos);
 				Bd.setAngle(block, block.angle -block.autorot);
 			}
@@ -368,30 +233,30 @@ function run() {
 			}
 
 			Bd.setPosition(hoverPreview, position);
-			Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+			Bd.setAngle(hoverPreview, degreesToPoint(0, 0, 
 				hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI + hoverAngle + .05
 			);
 
 			var colliding = false;
 
-			if (SAT.collides(hoverPreview, planet).collided) {
+			if (SAT.collides(hoverPreview, planet, null).collided) {
 				colliding = true
 			} else {
 				for (var i = 0; i != placedBlocks.length; i++) {
-					if (SAT.collides(placedBlocks[i], hoverPreview).collided) {
+					if (SAT.collides(placedBlocks[i], hoverPreview, null).collided) {
 						colliding = true; break;
 					}
 				}
 
 				if (!colliding) {
 					for (var i = 0; i != solidPlats.length; i++) {
-						if (SAT.collides(solidPlats[i], hoverPreview).collided) {
+						if (SAT.collides(solidPlats[i], hoverPreview, null).collided) {
 							colliding = true; break;
 						}
 					}
 
 					if (!colliding) {
-						colliding = !SAT.collides(hoverPreview, atmosphere).collided;
+						colliding = !SAT.collides(hoverPreview, atmosphere, null).collided;
 					}
 				}
 			}
@@ -433,7 +298,7 @@ function run() {
 				}
 				hoverAngle = 0;
 
-				Bd.setAngle(hoverPreview, degreesToPoint(planet.position.x, planet.position.y, 
+				Bd.setAngle(hoverPreview, degreesToPoint(0, 0, 
 					hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
 				tNewBlockSpawn.start();
@@ -443,7 +308,7 @@ function run() {
 		if (state == 0) {
 			//LOST CHECK
 			for (var i = 0; i != placedBlocks.length; i++) {
-				if (SAT.collides(placedBlocks[i], planet).collided) {
+				if (SAT.collides(placedBlocks[i], planet, null).collided) {
 
 					console.log(placedBlocks);
 
@@ -480,7 +345,7 @@ function run() {
 	} else {
 		if (mouse.button == -1) {
 			Unload();
-			Load(curLevel++); //QQQ Game finished?
+			Load(curLevel+1); //QQQ Game finished?
 		}
 	}
 
@@ -575,3 +440,140 @@ function EaseInOut(t) {
 	return(t*(2-t));
 }
 
+function Restart() {
+	for (var i = 0; i != placedBlocks.length; i++) {
+		Composite.removeBody(world, placedBlocks[i]);
+	}
+
+	placedBlocks.length = 0;
+
+	hoverAngle = 0;
+	state = 0;
+	paused = false;
+	blocksLeft = totalBlocks-1;
+
+	if (previewBlock) {
+		Composite.removeBody(world, previewBlock);
+	}
+
+	if (hoverPreview) {
+		Composite.removeBody(world, hoverPreview);
+	}
+
+	previewVertices = randomFromArray(blockSelection);
+	previewBlock = CreateSensor(0, 0, 180, previewVertices, true);
+
+	hoverVertices = randomFromArray(blockSelection, previewVertices);
+	hoverPreview = CreateSensor(0, 0, 0, hoverVertices, false);
+
+	str1 = "";
+	str2 = "Level "+(curLevel+1)+"/"+levels.length;
+
+	tRotateHoveredBlock.off();
+	tBlockPlacementCooldown.off();
+	tNewBlockSpawn.off();
+	tRestartTimer.off();
+	tWinTimer.off();
+}
+
+function Unload() {
+	Restart();
+
+	for (var i = 0; i != solidPlats.length; i++) {
+		Composite.removeBody(world, solidPlats[i]);
+	}
+
+	solidPlats.length = 0;
+}
+
+function Load(nr) {
+	nr = Common.clamp(nr, 0, levels.length-1)
+
+	curLevel = nr;
+	var lvlData = levels[nr];
+
+	if (planet) {
+		Composite.removeBody(world, planet);
+	}
+
+	if (atmosphere) {
+		Composite.removeBody(world, atmosphere);
+	}
+
+	totalBlocks = lvlData[0];
+	blockSelection = lvlData[3];
+
+	// create a body with an attractor
+	planet = Bodies.polygon(
+		0,
+		0,
+		100,
+		lvlData[1], 
+		{
+		isStatic: true,
+		isSensor: true,
+
+		// example of an attractor function that 
+		// returns a force vector that applies to bodyB
+		plugin: {
+			attractors: [
+				function(bodyA, bodyB) {
+					return {
+						x: (bodyA.position.x - bodyB.position.x) * 0.0000005,
+						y: (bodyA.position.y - bodyB.position.y) * 0.0000005,
+					};
+				}
+			]
+		},
+	}, false
+	);
+
+	planet.render.fillStyle = "#CD0E0E";
+	Composite.add(world, planet);
+
+	atmosphere = Bodies.polygon(
+		0,
+		0,
+		100,
+		lvlData[2],
+		{
+		isStatic: true,
+		isSensor: true
+	}, false
+	);
+	
+	atmosphere.render.fillStyle = "#00000000";
+	
+	atmosphere.render.strokeStyle = gradient;
+	atmosphere.render.lineWidth = 3;
+	atmosphere.render.opacity = 0.3;
+	Composite.add(world, atmosphere);
+
+	for(var i = 0; i != lvlData[4].length; i++) {
+		var sld = lvlData[4][i];
+		var plat = Bodies.polygon(
+			sld[0], sld[1], Math.abs(sld[2]), sld[3], {
+				isStatic: true
+			}, sld[2] < 0
+		)
+
+		plat.friction = 0.8;
+		
+		Bd.scale(plat, sld[5], sld[6]);
+		Bd.setAngle(plat, sld[4] * (Math.PI/180))
+
+		plat.autorot = sld[7];
+		
+		Composite.add(world, plat);
+		solidPlats.push(plat);
+	}
+
+	Restart();
+}
+
+function RotateBlock(rotateDelta) {
+	prevRotation = hoverAngle;
+	rotateAppend = Math.sign(rotateDelta) * (1 / 6) * Math.PI;
+	tRotateHoveredBlock.start();
+	//console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
+}

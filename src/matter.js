@@ -23,7 +23,8 @@ Common.extend = function (obj, deep) {
                 if (deepClone && source[prop] && source[prop].constructor === Object) {
                     if (!obj[prop] || obj[prop].constructor === Object) {
                         obj[prop] = obj[prop] || {};
-                        Common.extend(obj[prop], deepClone, source[prop]);
+                        var temp = Common.extend(obj[prop], deepClone);
+                        Common.extend(temp, source[prop]);
                     } else {
                         obj[prop] = source[prop];
                     }
@@ -35,10 +36,6 @@ Common.extend = function (obj, deep) {
     }
 
     return obj;
-};
-
-Common.clone = function (obj, deep) {
-    return Common.extend({}, deep, obj);
 };
 
 Common.keys = function (obj) {
@@ -150,7 +147,7 @@ Bounds.create = function (vertices) {
     };
 
     if (vertices)
-        Bounds.update(bounds, vertices);
+        Bounds.update(bounds, vertices, null);
 
     return bounds;
 };
@@ -327,8 +324,8 @@ Vector.div = function (vector, scalar) {
 };
 
 
-Vector.perp = function (vector, negate) {
-    negate = negate === true ? -1 : 1;
+Vector.perp = function (vector) {
+    var negate = 1
     return {
         x: negate * -vector.y,
         y: negate * vector.x
@@ -406,8 +403,8 @@ Vertices.centre = function (vertices) {
     for (var i = 0; i < vertices.length; i++) {
         j = (i + 1) % vertices.length;
         cross = Vector.cross(vertices[i], vertices[j]);
-        temp = Vector.mult(Vector.add(vertices[i], vertices[j]), cross);
-        centre = Vector.add(centre, temp);
+        temp = Vector.mult(Vector.add(vertices[i], vertices[j], null), cross);
+        centre = Vector.add(centre, temp, null);
     }
 
     return Vector.div(centre, 6 * area);
@@ -525,7 +522,7 @@ Vertices.scale = function (vertices, scaleX, scaleY, point) {
 
     for (var i = 0; i < vertices.length; i++) {
         vertex = vertices[i];
-        delta = Vector.sub(vertex, point);
+        delta = Vector.sub(vertex, point, null);
         vertices[i].x = point.x + delta.x * scaleX;
         vertices[i].y = point.y + delta.y * scaleY;
     }
@@ -545,15 +542,15 @@ Vertices.clockwiseSort = function (vertices) {
 
 var Composite = {};
 
-Composite.create = function (options) {
-    return Common.extend({
+Composite.create = function () {
+    return {
         id: Common.nextId(),
         type: 'composite',
         parent: null,
         isModified: false,
         bodies: [],
         composites: []
-    }, options);
+    };
 };
 
 
@@ -596,7 +593,7 @@ Composite.add = function (composite, object) {
 };
 
 
-Composite.remove = function (composite, object, deep) {
+Composite.remove = function (composite, object) {
     var objects = [].concat(object);
 
     for (var i = 0; i < objects.length; i++) {
@@ -605,7 +602,7 @@ Composite.remove = function (composite, object, deep) {
         switch (obj.type) {
 
             case 'body':
-                Composite.removeBody(composite, obj, deep);
+                Composite.removeBody(composite, obj);
                 break;
 
         }
@@ -621,17 +618,11 @@ Composite.addBody = function (composite, body) {
 };
 
 
-Composite.removeBody = function (composite, body, deep) {
+Composite.removeBody = function (composite, body) {
     var position = Common.indexOf(composite.bodies, body);
     if (position !== -1) {
         Composite.removeBodyAt(composite, position);
         Composite.setModified(composite, true, true, false);
-    }
-
-    if (deep) {
-        for (var i = 0; i < composite.composites.length; i++) {
-            Composite.removeBody(composite.composites[i], body, true);
-        }
     }
 
     return composite;
@@ -666,7 +657,7 @@ Bd.create = function (options) {
         parts: [],
         plugin: {},
         angle: 0,
-        vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40 L 0 40'),
+        vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40 L 0 40', null),
         position: {
             x: 0,
             y: 0
@@ -679,11 +670,6 @@ Bd.create = function (options) {
         positionImpulse: {
             x: 0,
             y: 0
-        },
-        constraintImpulse: {
-            x: 0,
-            y: 0,
-            angle: 0
         },
         totalContacts: 0,
         speed: 0,
@@ -716,7 +702,6 @@ Bd.create = function (options) {
             fillStyle: null,
             lineWidth: null
         },
-        events: null,
         bounds: null,
         autorot: 0,
         circleRadius: 0,
@@ -892,7 +877,7 @@ Bd.setVertices = function (body, vertices) {
 
 
     body.axes = Axes.fromVertices(body.vertices);
-    body.area = Vertices.area(body.vertices);
+    body.area = Vertices.area(body.vertices, false);
     Bd.setMass(body, body.density * body.area);
 
 
@@ -903,7 +888,7 @@ Bd.setVertices = function (body, vertices) {
     Bd.setInertia(body, Bd._inertiaScale * Vertices.inertia(body.vertices, body.mass));
 
 
-    Vertices.translate(body.vertices, body.position);
+    Vertices.translate(body.vertices, body.position, 1);
     Bounds.update(body.bounds, body.vertices, body.velocity);
 };
 
@@ -928,7 +913,7 @@ Bd.setParts = function (body, parts) {
 
 
 Bd.setPosition = function (body, position) {
-    var delta = Vector.sub(position, body.position);
+    var delta = Vector.sub(position, body.position, null);
     body.positionPrev.x += delta.x;
     body.positionPrev.y += delta.y;
 
@@ -936,7 +921,7 @@ Bd.setPosition = function (body, position) {
         var part = body.parts[i];
         part.position.x += delta.x;
         part.position.y += delta.y;
-        Vertices.translate(part.vertices, delta);
+        Vertices.translate(part.vertices, delta, 1);
         Bounds.update(part.bounds, part.vertices, body.velocity);
     }
 };
@@ -959,7 +944,7 @@ Bd.setAngle = function (body, angle) {
 };
 
 Bd.translate = function (body, translation) {
-    Bd.setPosition(body, Vector.add(body.position, translation));
+    Bd.setPosition(body, Vector.add(body.position, translation, null));
 };
 
 
@@ -982,11 +967,11 @@ Bd.rotate = function (body, rotation, point) {
 };
 
 
-Bd.scale = function (body, scaleX, scaleY, point) {
+Bd.scale = function (body, scaleX, scaleY) {
     var totalArea = 0,
         totalInertia = 0;
 
-    point = point || body.position;
+    var point = body.position;
 
     for (var i = 0; i < body.parts.length; i++) {
         var part = body.parts[i];
@@ -996,19 +981,19 @@ Bd.scale = function (body, scaleX, scaleY, point) {
 
 
         part.axes = Axes.fromVertices(part.vertices);
-        part.area = Vertices.area(part.vertices);
+        part.area = Vertices.area(part.vertices, false);
         Bd.setMass(part, body.density * part.area);
 
 
         Vertices.translate(part.vertices, {
             x: -part.position.x,
             y: -part.position.y
-        });
+        }, 1);
         Bd.setInertia(part, Bd._inertiaScale * Vertices.inertia(part.vertices, part.mass));
         Vertices.translate(part.vertices, {
             x: part.position.x,
             y: part.position.y
-        });
+        }, 1);
 
         if (i > 0) {
             totalArea += part.area;
@@ -1075,7 +1060,7 @@ Bd.update = function (body, deltaTime, timeScale, correction) {
     for (var i = 0; i < body.parts.length; i++) {
         var part = body.parts[i];
 
-        Vertices.translate(part.vertices, body.velocity);
+        Vertices.translate(part.vertices, body.velocity, 1);
 
         if (i > 0) {
             part.position.x += body.velocity.x;
@@ -1255,31 +1240,22 @@ Bodies.polygon = function (x, y, sides, radius, options, half = false) {
             x: x,
             y: y
         },
-        vertices: Vertices.fromPath(path)
+        vertices: Vertices.fromPath(path, null)
     };
 
-    return Bd.create(Common.extend({}, polygon, options));
+    return Bd.create(Common.extend(polygon, options));
 };
 
 
-Bodies.fromVertices = function (x, y, vertexSets, options, flagInternal, removeCollinear, minimumArea, removeDuplicatePoints) {
+Bodies.fromVertices = function (x, y, vertexSets) {
     var body,
         parts,
         vertices,
         i,
-        j,
-        k,
-        v,
-        z;
+        v;
 
-    options = options || {};
+    var options = {};
     parts = [];
-
-    flagInternal = typeof flagInternal !== 'undefined' ? flagInternal : false;
-    removeCollinear = typeof removeCollinear !== 'undefined' ? removeCollinear : 0.01;
-    minimumArea = typeof minimumArea !== 'undefined' ? minimumArea : 10;
-    removeDuplicatePoints = typeof removeDuplicatePoints !== 'undefined' ? removeDuplicatePoints : 0.01;
-
 
     if (!Common.isArray(vertexSets[0])) {
         vertexSets = [vertexSets];
@@ -1302,40 +1278,6 @@ Bodies.fromVertices = function (x, y, vertexSets, options, flagInternal, removeC
 
     for (i = 0; i < parts.length; i++) {
         parts[i] = Bd.create(Common.extend(parts[i], options));
-    }
-
-
-    if (flagInternal) {
-        var coincident_max_dist = 5;
-
-        for (i = 0; i < parts.length; i++) {
-            var partA = parts[i];
-
-            for (j = i + 1; j < parts.length; j++) {
-                var partB = parts[j];
-
-                if (Bounds.overlaps(partA.bounds, partB.bounds)) {
-                    var pav = partA.vertices,
-                        pbv = partB.vertices;
-
-
-                    for (k = 0; k < partA.vertices.length; k++) {
-                        for (z = 0; z < partB.vertices.length; z++) {
-
-                            var da = Vector.magnitudeSquared(Vector.sub(pav[(k + 1) % pav.length], pbv[z])),
-                                db = Vector.magnitudeSquared(Vector.sub(pav[k], pbv[(z + 1) % pbv.length]));
-
-
-                            if (da < coincident_max_dist && db < coincident_max_dist) {
-                                pav[k].isInternal = true;
-                                pbv[z].isInternal = true;
-                            }
-                        }
-                    }
-
-                }
-            }
-        }
     }
 
     if (parts.length > 1) {
@@ -1644,7 +1586,7 @@ SAT.collides = function (bodyA, bodyB, previousCollision) {
     bodyB = collision.bodyB;
 
 
-    if (Vector.dot(minOverlap.axis, Vector.sub(bodyB.position, bodyA.position)) < 0) {
+    if (Vector.dot(minOverlap.axis, Vector.sub(bodyB.position, bodyA.position, null)) < 0) {
         collision.normal = {
             x: minOverlap.axis.x,
             y: minOverlap.axis.y
@@ -1813,7 +1755,6 @@ Render.create = function (options) {
             height: 600,
             pixelRatio: 1,
             background: '#14151f',
-            wireframeBackground: '#14151f',
             hasBounds: !!options.bounds,
             enabled: true,
             wireframes: true,
@@ -1864,7 +1805,7 @@ Render.startViewTransform = function (render) {
     render.context.translate(-render.bounds.min.x, -render.bounds.min.y);
 };
 
-Render.world = function (render, time) {
+Render.world = function (render) {
     var startTime = Common.now(),
         engine = render.engine,
         world = engine.world,
@@ -1875,13 +1816,9 @@ Render.world = function (render, time) {
 
     var allBodies = Composite.allBodies(world),
 
-        background = options.wireframes ? options.wireframeBackground : options.background,
+        background = options.background,
         bodies = [],
         i;
-
-    var event = {
-        timestamp: engine.timing.timestamp
-    };
 
     if (render.currentBackground !== background)
         _applyBackground(render, background);
@@ -1912,7 +1849,6 @@ Render.world = function (render, time) {
 Render.bodies = function (render, bodies, context) {
     var c = context,
         options = render.options,
-        showInternalEdges = options.showInternalEdges || !options.wireframes,
         bod,
         part,
         i,
@@ -1920,10 +1856,6 @@ Render.bodies = function (render, bodies, context) {
 
     for (i = 0; i < bodies.length; i++) {
         bod = bodies[i];
-
-        if (!bod.render.visible)
-            continue;
-
 
         for (k = bod.parts.length > 1 ? 1 : 0; k < bod.parts.length; k++) {
             part = bod.parts[k];
@@ -1935,28 +1867,23 @@ Render.bodies = function (render, bodies, context) {
                 c.globalAlpha = part.render.opacity;
             }
 
-                if (part.circleRadius) {
-                    c.beginPath();
-                    c.arc(part.position.x, part.position.y, part.circleRadius, 0, 2 * Math.PI);
-                } else {
-                    c.beginPath();
-                    c.moveTo(part.vertices[0].x, part.vertices[0].y);
+                c.beginPath();
+                c.moveTo(part.vertices[0].x, part.vertices[0].y);
 
-                    for (var j = 1; j < part.vertices.length; j++) {
-                        if (!part.vertices[j - 1].isInternal || showInternalEdges) {
-                            c.lineTo(part.vertices[j].x, part.vertices[j].y);
-                        } else {
-                            c.moveTo(part.vertices[j].x, part.vertices[j].y);
-                        }
-
-                        if (part.vertices[j].isInternal && !showInternalEdges) {
-                            c.moveTo(part.vertices[(j + 1) % part.vertices.length].x, part.vertices[(j + 1) % part.vertices.length].y);
-                        }
+                for (var j = 1; j < part.vertices.length; j++) {
+                    if (!part.vertices[j - 1].isInternal) {
+                        c.lineTo(part.vertices[j].x, part.vertices[j].y);
+                    } else {
+                        c.moveTo(part.vertices[j].x, part.vertices[j].y);
                     }
 
-                    c.lineTo(part.vertices[0].x, part.vertices[0].y);
-                    c.closePath();
+                    if (part.vertices[j].isInternal) {
+                        c.moveTo(part.vertices[(j + 1) % part.vertices.length].x, part.vertices[(j + 1) % part.vertices.length].y);
+                    }
                 }
+
+                c.lineTo(part.vertices[0].x, part.vertices[0].y);
+                c.closePath();
 
                 if (!options.wireframes) {
                     c.fillStyle = part.render.fillStyle;
@@ -1968,10 +1895,6 @@ Render.bodies = function (render, bodies, context) {
                     }
 
                     c.fill();
-                } else {
-                    c.lineWidth = 1;
-                    c.strokeStyle = '#bbb';
-                    c.stroke();
                 }
             }
 
@@ -2005,20 +1928,13 @@ Contact.id = function (vertex) {
 
 var Engine = {};
 
-Engine.create = function (options) {
-    options = options || {};
+Engine.create = function () {
+    var options = {};
 
     var defaults = {
         positionIterations: 6,
         velocityIterations: 4,
-        constraintIterations: 2,
-        events: [],
         grid: null,
-        gravity: {
-            x: 0,
-            y: 1,
-            scale: 0.001
-        },
         timing: {
             timestamp: 0,
             timeScale: 1,
@@ -2033,19 +1949,17 @@ Engine.create = function (options) {
     engine.grid = Grid.create(options.grid || options.broadphase);
     engine.pairs = Pairs.create();
 
-
-    engine.world.gravity = engine.gravity;
     engine.broadphase = engine.grid;
     engine.metrics = {};
 
     return engine;
 };
 
-Engine.update = function (engine, delta, correction) {
+Engine.update = function (engine, delta) {
     var startTime = Common.now();
 
     delta = delta || 1000 / 60;
-    correction = correction || 1;
+    var correction = 1;
 
     var world = engine.world,
         timing = engine.timing,
@@ -2056,13 +1970,7 @@ Engine.update = function (engine, delta, correction) {
     timing.timestamp += delta * timing.timeScale;
     timing.lastDelta = delta * timing.timeScale;
 
-    var event = {
-        timestamp: timing.timestamp
-    };
-
     var allBodies = Composite.allBodies(world);
-
-    Engine._bodiesApplyGravity(allBodies, engine.gravity);
 
     Engine._bodiesUpdate(allBodies, delta, timing.timeScale, correction, world.bounds);
 
@@ -2117,27 +2025,6 @@ Engine._bodiesClearForces = function (bodies) {
         bod.torque = 0;
     }
 };
-
-
-Engine._bodiesApplyGravity = function (bodies, gravity) {
-    var gravityScale = typeof gravity.scale !== 'undefined' ? gravity.scale : 0.001;
-
-    if ((gravity.x === 0 && gravity.y === 0) || gravityScale === 0) {
-        return;
-    }
-
-    for (var i = 0; i < bodies.length; i++) {
-        var bod = bodies[i];
-
-        if (bod.isStatic)
-            continue;
-
-
-            bod.force.y += bod.mass * gravity.y * gravityScale;
-            bod.force.x += bod.mass * gravity.x * gravityScale;
-    }
-};
-
 
 Engine._bodiesUpdate = function (bodies, deltaTime, timeScale, correction, worldBounds) {
     for (var i = 0; i < bodies.length; i++) {
@@ -2254,7 +2141,7 @@ Resolver.postSolvePosition = function (bodies) {
 
             for (var j = 0; j < bod.parts.length; j++) {
                 var part = bod.parts[j];
-                Vertices.translate(part.vertices, bod.positionImpulse);
+                Vertices.translate(part.vertices, bod.positionImpulse, 1);
                 Bounds.update(part.bounds, part.vertices, bod.velocity);
                 part.position.x += bod.positionImpulse.x;
                 part.position.y += bod.positionImpulse.y;
@@ -2459,14 +2346,14 @@ var Pairs = {};
 
 Pairs._pairMaxIdleLife = 1000;
 
-Pairs.create = function (options) {
-    return Common.extend({
+Pairs.create = function () {
+    return {
         table: {},
         list: [],
         collisionStart: [],
         collisionActive: [],
         collisionEnd: []
-    }, options);
+    };
 };
 
 
@@ -2539,13 +2426,11 @@ Pairs.removeOld = function (pairs, timestamp) {
         pairsTable = pairs.table,
         indexesToRemove = [],
         pair,
-        collision,
         pairIndex,
         i;
 
     for (i = 0; i < pairsList.length; i++) {
         pair = pairsList[i];
-        collision = pair.collision;
 
         if (timestamp - pair.timeUpdated > Pairs._pairMaxIdleLife) {
             indexesToRemove.push(i);
