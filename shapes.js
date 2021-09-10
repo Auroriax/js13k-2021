@@ -44,7 +44,6 @@ var sEquiTriangle = [
 	{x: -34.6, y: -20}
 ]
 
-var rectBlocks = [sBlock, sLongBlock]
 var simpleShapes = [sBlock, sLongBlock, sTrapezium]
 var shapes = [sBlock, sBlock, sTrapezium, sTrapezium, sParalellogramL, sParalellogramR, sLongBlock, sLongBlock, sEquiTriangle, sEquiTriangle];
 var bigShapes = [sTrapezium, sTrapezium, sParalellogramL, sParalellogramR, sLongBlock, sLongBlock, sEquiTriangle, sEquiTriangle];
@@ -86,9 +85,6 @@ levels.push([//Pyramids
 		[0, -180, 4, 50, 180, 2, 0.7],
 		[0, -215, 4, 50, 180, 1, 0.7],
 		[0, 135, 3, 50, 270, 2, 3.25],
-		//[0, 140, 4, 50, 180, 3, 0.7],
-		//[0, 170, 4, 50, 180, 2, 0.7],
-		//[0, 210, 4, 50, 180, 1, 0.7],
 	]
 ])
 
@@ -147,23 +143,7 @@ levels.push([ //Spike rotation level
 		[100, 0, 3, 50, 180, 4, 1, -0.001],
 		[0, -100, 3, 50, 270, -4, 1, -0.001],
 		[30, 0, -50, 50, 270, 2, 2, -0.001],
-
-		//[0, 100, 4, 50, 90, 0.25, 2.5, -0.005],
-		//[90, 130, 4, 50, 0, 0.25, 1, -0.005],
-		//[-90, 130, 4, 50, 0, 0.25, 1, -0.005],
-
-		//[0, 220, 4, 50, 90, 0.25, 3.5, 0.005],
-		//[90, 250, 4, 50, 0, 0.25, 1, 0.005],
-		//[-90, 250, 4, 50, 0, 0.25, 1, 0.005],
-		//[0, -50, -50, 50, 180, 5, 3, 0],
-		//[150, 0, 3, 50, 180, 3.5, 1, 0.01],
-		//[0, 240, 5, 50, 90, 5, 1.5, 0.005],
-		//[0, 170, 5, 50, 90, 4, 3],
-		//[-100, -170, 4, 50, 45, 3.75, 0.5],
-		//[100, -170, 4, 50, 135, 3.75, 0.5],
-		//[-250, 0, -50, 50, 90, 5.5, 3.5],
-		//[0, 250, 4, 50, 180, 1, 4, 0.01],
 	]
 ])
 
-var curLevel = 1;
+var curLevel = 0;
