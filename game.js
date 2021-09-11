@@ -326,7 +326,9 @@ function run() {
 				audio(sfx.COUNTDOWN);
 			} else {
 				hoverVertices = previewVertices;
-				hoverPreview = previewBlock;
+
+				Composite.removeBody(world, previewBlock);
+				hoverPreview = previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, hoverVertices, true);
 
 				blocksLeft--;
 
