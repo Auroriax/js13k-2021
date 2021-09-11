@@ -1869,8 +1869,8 @@ Engine.create = function () {
     var options = {};
 
     var defaults = {
-        positionIterations: 6,
-        velocityIterations: 4,
+        positionIterations: 12,
+        velocityIterations: 8,
         grid: null,
         timing: {
             timestamp: 0,

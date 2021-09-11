@@ -1,12 +1,24 @@
 //INPUT
 
+const sfx = {
+	PLACE: 0,
+	TURNCW: 1,
+	TURNCCW: 2,
+	LOSE: 3,
+	WIN: 4,
+	NEWBLOCK: 5,
+	RESTART: 6,
+	UNABLETOPLACE: 7,
+	COUNTDOWN: 8
+}
+
 var tRotateHoveredBlock = new Timer(0.05);
 var prevRotation = 0;
 var rotateAppend = 0;
 
 var tBlockPlacementCooldown = new Timer(1);
 var tNewBlockSpawn = new Timer(0.75);
-var tWinTimer = new Timer(5);
+var tWinTimer = new Timer(4);
 var tRestartTimer = new Timer(3);
 
 var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
@@ -64,6 +76,7 @@ var mouse = Mouse.create(render.canvas);
 var paused = false;
 var blocksLeft = 3;
 var state = 0; //0 = normal, 1 = won, -1 = lost.
+var visCount = 999;
 
 resize();
 
@@ -167,6 +180,18 @@ function run() {
 		kReset.update(fps);
 		kBrowse.update(fps);
 
+		if (solidPlats && visCount <= 1+solidPlats.length) {
+			if (visCount == 0) {
+				planet.render.visible = true;
+			} else if (visCount == 1) {
+				atmosphere.render.visible = true;
+			} else {
+				solidPlats[visCount-2].render.visible = true;
+			}
+
+			visCount++;
+		}
+
 		if (kBrowse.fired) {
 			Unload();
 			Load(curLevel + kBrowse.delta);
@@ -187,6 +212,13 @@ function run() {
 				paused = true;
 				str1 = "You win!";
 				str2 = "Click to continue";
+				audio(sfx.WIN);
+
+				for (var i = 0; i != placedBlocks.length; i++) {
+					placedBlocks[i].render.strokeStyle = placedBlocks[i].render.fillStyle;
+					placedBlocks[i].render.fillStyle = "#00000000";
+					placedBlocks[i].lineWidth = 4;
+				}
 			} else {
 				var p = Math.floor(EaseInOut(tWinTimer.normalized()) * 100);
 				str1 = "Stability: "+p+"%";
@@ -221,6 +253,8 @@ function run() {
 		}
 
 		if (hoverPreview) {
+			hoverPreview.render.visible = true;
+
 			var position = mouse.position;
 			if (tNewBlockSpawn.running) {
 				var progress = EaseInOut(tNewBlockSpawn.normalized())
@@ -275,6 +309,10 @@ function run() {
 						str1 = "Stability: 0%";
 						str2 = "Stay steady...";
 					}
+					audio(sfx.PLACE);
+				} else {
+					audio(sfx.UNABLETOPLACE);
+					hoverPreview.render.visible = false;
 				}
 			} else if (mouse.button == -1 && mouseDown) {
 				mouseDown = false;
@@ -285,6 +323,7 @@ function run() {
 
 			if (blocksLeft <= 0) {
 				tWinTimer.start();
+				audio(sfx.COUNTDOWN);
 			} else {
 				hoverVertices = previewVertices;
 				hoverPreview = previewBlock;
@@ -301,6 +340,8 @@ function run() {
 				Bd.setAngle(hoverPreview, degreesToPoint(0, 0, 
 					hoverPreview.position.x, hoverPreview.position.y) - 0.5 * Math.PI);
 
+				audio(sfx.NEWBLOCK);
+
 				tNewBlockSpawn.start();
 			}
 		}
@@ -310,7 +351,7 @@ function run() {
 			for (var i = 0; i != placedBlocks.length; i++) {
 				if (SAT.collides(placedBlocks[i], planet, null).collided) {
 
-					console.log(placedBlocks);
+					//console.log(placedBlocks);
 
 						str1 = "Oops!";
 						str2 = "Block fell into core of planet.";
@@ -332,6 +373,8 @@ function run() {
 						tNewBlockSpawn.off();
 
 						tRestartTimer.start();
+
+						audio(sfx.LOSE);
 
 					break;
 				}
@@ -378,7 +421,7 @@ function run() {
 
 window.onresize = function() {
 	resize();
-	console.log("resized canvas");
+	//console.log("resized canvas");
 };
 
 var zoom = 1;
@@ -451,6 +494,7 @@ function Restart() {
 	state = 0;
 	paused = false;
 	blocksLeft = totalBlocks-1;
+	visCount = 0;
 
 	if (previewBlock) {
 		Composite.removeBody(world, previewBlock);
@@ -474,6 +518,8 @@ function Restart() {
 	tNewBlockSpawn.off();
 	tRestartTimer.off();
 	tWinTimer.off();
+
+	audio(sfx.RESTART);
 }
 
 function Unload() {
@@ -529,6 +575,7 @@ function Load(nr) {
 	);
 
 	planet.render.fillStyle = "#CD0E0E";
+	planet.render.visible = false;
 	Composite.add(world, planet);
 
 	atmosphere = Bodies.polygon(
@@ -538,26 +585,29 @@ function Load(nr) {
 		lvlData[2],
 		{
 		isStatic: true,
-		isSensor: true
+		isSensor: true,
+		render: {
+			fillStyle: "#00000000",
+			strokeStyle: gradient,
+			lineWidth: 3,
+			opacity: 0.3,
+			visible: false
+		}
 	}, false
 	);
 	
-	atmosphere.render.fillStyle = "#00000000";
-	
-	atmosphere.render.strokeStyle = gradient;
-	atmosphere.render.lineWidth = 3;
-	atmosphere.render.opacity = 0.3;
 	Composite.add(world, atmosphere);
 
 	for(var i = 0; i != lvlData[4].length; i++) {
 		var sld = lvlData[4][i];
 		var plat = Bodies.polygon(
 			sld[0], sld[1], Math.abs(sld[2]), sld[3], {
-				isStatic: true
+				isStatic: true,
+				friction: 0.8
 			}, sld[2] < 0
 		)
 
-		plat.friction = 0.8;
+		plat.render.visible = false;
 		
 		Bd.scale(plat, sld[5], sld[6]);
 		Bd.setAngle(plat, sld[4] * (Math.PI/180))
@@ -576,4 +626,49 @@ function RotateBlock(rotateDelta) {
 	rotateAppend = Math.sign(rotateDelta) * (1 / 6) * Math.PI;
 	tRotateHoveredBlock.start();
 	//console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
+
+	audio(Math.sign(rotateDelta) == 1 ? sfx.TURNCW : sfx.TURNCCW);
+}
+
+function audio(soundID) {
+	//if (!audioEnabled) {return;}
+
+	//console.log("Sound "+soundID)
+
+	if (true) {
+		switch (soundID) {
+			case sfx.RESTART:
+					zzfx(...[0.8,,542,.12,.16,.01,1,1.65,27,,88,.06,,.9,,,.33]); // Random 2
+					break;
+			case sfx.PLACE: 
+					zzfx(...[1.01,,466,,.05,.02,2,.89,62,31,,,.05,,-80,.6]);
+					break;
+			case sfx.NEWBLOCK:
+					zzfx(...[1.03,.15,359,,.07,.2,1,.65,,,,,.03,,.7,,,.51,.09,.11]); // Pickup 69
+					//zzfx(...[1.4,,1974,,.08,.24,,1.44,,,333,.08,,,7.8,,.04,.83]); // Pickup 7
+					//zzfx(...[1.4,,1974,,.08,.24,,1.44,,,333,.08,,,7.8,,.04,.83]); // Pickup 7
+					break;
+			case sfx.LOSE:
+					zzfx(...[1,,701,,.03,.05,,.35,-0.8,-0.1,-815,,.05,,-5.4,.7,.03,.91,.01,.27]); // Random 8
+					break;
+			case sfx.UNABLETOPLACE:
+					zzfx(...[,,255,,,.21,,1.56,,,-514,.09,,,,,,.69,.07]); // Pickup 19
+					break;
+			case sfx.TURNCW:
+					zzfx(...[1.03,,74,,,.29,1,.56,,8.4,,,,.1,,,,.61,.02]); // Hit 33
+					break;
+			case sfx.TURNCCW:
+					zzfx(...[1.03,,74,,.01,.28,1,.56,,8.5,,-0.01,,.1,,,,.61,.02]); // Hit 33 - Mutation 1
+					break;
+			case sfx.WIN:
+					zzfx(...[,,442,.19,.04,.06,,1.4,-10,,-1,.01,.1,.9,,,,.86,.15]); // Random 55
+					break;
+			case sfx.PLACE:
+					zzfx(...[1.02,,90,,,.25,3,1.51,,,,,,1,,.1,,.51,.02]); // Hit 63
+					break;
+			case sfx.COUNTDOWN:
+					zzfx(...[0.8,,1374,1,1,1,2,2.77,12,25,,,.14,,,,.01,.48,1,.14]); // Random 87
+					break;
+		}
+	}
 }
