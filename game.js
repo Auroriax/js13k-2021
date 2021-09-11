@@ -496,6 +496,12 @@ function Restart() {
 	blocksLeft = totalBlocks-1;
 	visCount = 0;
 
+	planet.render.visible = false;
+	atmosphere.render.visible = false;
+	for (var i = 0; i != solidPlats.length; i++) {
+		solidPlats[i].render.visible = false;
+	}
+
 	if (previewBlock) {
 		Composite.removeBody(world, previewBlock);
 	}
