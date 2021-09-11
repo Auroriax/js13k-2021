@@ -82,10 +82,6 @@ var hoveredLvl = 0;
 
 resize();
 
-Load(curLevel);
-
-mouse.position = {x: 0, y: -1};
-
 //Scatter stars
 var stars = [];
 const RANGE = 1000;
@@ -112,6 +108,10 @@ for (var i = 0; i != 100; i++) {
 	Composite.add(world, bod);
 	stars.push(bod);
 }
+
+Load(curLevel);
+
+mouse.position = {x: 0, y: -1};
 
 function CreateSensor(x, y, ang, vertices, preview) {
 	var bod = Bodies.fromVertices(x,y,vertices);
@@ -183,6 +183,8 @@ function run() {
 		kExit.update(fps);
 		kBrowse.update(fps);
 
+		context.miterLimit = 2;
+
 		if (solidPlats && visCount <= 1+solidPlats.length) {
 			if (visCount == 0) {
 				planet.render.visible = true;
@@ -203,30 +205,35 @@ function run() {
 				var assumedLvl = -1;
 				for(var i = 0; i != solidPlats.length; i++) {
 					if (solidPlats[i] == hoveredBodies[0]) {
-						assumedLvl = i; break;
+						assumedLvl = i;
+						solidPlats[i].render.fillStyle = "#999";
+	
+					} else {
+						solidPlats[i].render.fillStyle = "#14151f";
 					}
 				}
+
 				if (assumedLvl != -1) {
 					hoveredLvl = assumedLvl;
 					if (mouse.button == 0) {
 						mouse.button = -1;
-						Load(i+1);
+						Load(assumedLvl+1);
 						return;
 					}
 				} else {
 					hoveredLvl = -1;
+
+					for(var i = 0; i != solidPlats.length; i++) {
+						solidPlats[i].render.fillStyle = "#14151f";
+					}
 				}
 			} else {
 				hoveredLvl = -1;
-			}
 
-			/*for(var i = 0; i != solidPlats.length; i++) {
-				var yy = 10;
-				if (Query.point() {
-					yy += 20;
+				for(var i = 0; i != solidPlats.length; i++) {
+					solidPlats[i].render.fillStyle = "#14151f";
 				}
-				outline(i+1, solidPlats[i].position.x, solidPlats[i].position.y + yy);
-			}*/
+			}
 		}
 
 		if (kBrowse.fired) {
@@ -373,6 +380,7 @@ function run() {
 
 				Composite.removeBody(world, previewBlock);
 				hoverPreview = previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, hoverVertices, true);
+				hoverPreview.render.opacity = 0;
 
 				blocksLeft--;
 
@@ -743,9 +751,9 @@ function audio(soundID) {
 			case sfx.WIN:
 					zzfx(...[,,442,.19,.04,.06,,1.4,-10,,-1,.01,.1,.9,,,,.86,.15]); // Random 55
 					break;
-			case sfx.PLACE:
+			/*case sfx.PLACE:
 					zzfx(...[1.02,,90,,,.25,3,1.51,,,,,,1,,.1,,.51,.02]); // Hit 63
-					break;
+					break;*/
 			case sfx.COUNTDOWN:
 					zzfx(...[0.8,,1374,1,1,1,2,2.77,12,25,,,.14,,,,.01,.48,1,.14]); // Random 87
 					break;
