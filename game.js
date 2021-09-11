@@ -23,6 +23,7 @@ var tRestartTimer = new Timer(3);
 
 var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRight", "KeyD", "KeyX", "KeyE"], 0.15, 0.5);
 var kReset = new InputHandler(["KeyR"], [], Infinity);
+var kExit = new InputHandler(["Escape"], [], Infinity);
 
 var kBrowse = new InputHandler(["KeyN"], ["KeyB"], Infinity);
 
@@ -77,6 +78,7 @@ var paused = false;
 var blocksLeft = 3;
 var state = 0; //0 = normal, 1 = won, -1 = lost.
 var visCount = 999;
+var hoveredLvl = 0;
 
 resize();
 
@@ -178,6 +180,7 @@ function run() {
 
 		kRotate.update(fps);
 		kReset.update(fps);
+		kExit.update(fps);
 		kBrowse.update(fps);
 
 		if (solidPlats && visCount <= 1+solidPlats.length) {
@@ -192,13 +195,54 @@ function run() {
 			visCount++;
 		}
 
+		if (curLevel == 0) { //Level select
+
+			var hoveredBodies = Query.point(solidPlats, mouse.position);
+
+			if (hoveredBodies.length >= 1) {
+				var assumedLvl = -1;
+				for(var i = 0; i != solidPlats.length; i++) {
+					if (solidPlats[i] == hoveredBodies[0]) {
+						assumedLvl = i; break;
+					}
+				}
+				if (assumedLvl != -1) {
+					hoveredLvl = assumedLvl;
+					if (mouse.button == 0) {
+						mouse.button = -1;
+						Load(i+1);
+						return;
+					}
+				} else {
+					hoveredLvl = -1;
+				}
+			} else {
+				hoveredLvl = -1;
+			}
+
+			/*for(var i = 0; i != solidPlats.length; i++) {
+				var yy = 10;
+				if (Query.point() {
+					yy += 20;
+				}
+				outline(i+1, solidPlats[i].position.x, solidPlats[i].position.y + yy);
+			}*/
+		}
+
 		if (kBrowse.fired) {
-			Unload();
 			Load(curLevel + kBrowse.delta);
 		}
 
 		if (kReset.fired) {
 			Restart();
+		}
+
+		if (kExit.fired) {
+			console.log("Exit fired")
+			if (curLevel != 0) {
+				console.log("Gonna exit")
+				Exit();
+			}
 		}
 
 		if (tRestartTimer.finishedThisFrame && state == -1) {
@@ -252,7 +296,7 @@ function run() {
 			Bd.setPosition(previewBlock, previewBlockPos);
 		}
 
-		if (hoverPreview) {
+		if (hoverPreview && curLevel != 0) {
 			hoverPreview.render.visible = true;
 
 			var position = mouse.position;
@@ -389,7 +433,6 @@ function run() {
 		//Engine.update(engine, 1000 / 60);
 	} else {
 		if (mouse.button == -1) {
-			Unload();
 			Load(curLevel+1); //QQQ Game finished?
 		}
 	}
@@ -405,21 +448,34 @@ function run() {
 	var h = window.innerHeight * 0.5 * zoom;
 
 	context.font="small-caps bold 40px monospace";
-	context.strokeText(str1, 0, h - 60);
-	context.fillText(str1, 0, h - 60);
+	outline(str1, 0, h - 60);
 
+	if (curLevel == 0) {
+
+		for(var i = 0; i != solidPlats.length; i++) {
+			var plat = solidPlats[i];
+			if (plat.render.visible) {
+				context.fillStyle = (i == hoveredLvl) ? "#fff" : "#666";
+				outline(i+1, plat.position.x, plat.position.y + 10);
+			}
+		}
+	}
+
+	context.fillStyle = "#fff";
 	context.font="small-caps bold 32px monospace";
-	context.strokeText(str2, 0, h - 25);
-	context.fillText(str2, 0, h - 25);
+	outline(str2, 0, h - 25);
 
-		
-	if (state == 0) {
+	if (state == 0 && curLevel != 0) {
 		var str = blocksLeft + " left";
 		context.font="small-caps bold 24px monospace";
-		context.strokeText(str, w - 75, -h + 150);
-		context.fillText(str, w - 75, -h + 150);
+		outline(str, w - 75, -h + 150);
 	}
 };
+
+function outline(str, x, y) {
+	context.strokeText(str, x, y);
+	context.fillText(str, x, y);
+}
 
 window.onresize = function() {
 	resize();
@@ -498,8 +554,14 @@ function Restart() {
 	blocksLeft = totalBlocks-1;
 	visCount = 0;
 
-	planet.render.visible = false;
-	atmosphere.render.visible = false;
+	if (planet) {
+		planet.render.visible = false;
+	}
+
+	if (atmosphere) {
+		atmosphere.render.visible = false;
+	}
+
 	for (var i = 0; i != solidPlats.length; i++) {
 		solidPlats[i].render.visible = false;
 	}
@@ -512,14 +574,19 @@ function Restart() {
 		Composite.removeBody(world, hoverPreview);
 	}
 
-	previewVertices = randomFromArray(blockSelection);
-	previewBlock = CreateSensor(0, 0, 180, previewVertices, true);
+	if (curLevel != 0) {
+		previewVertices = randomFromArray(blockSelection);
+		previewBlock = CreateSensor(0, 0, 180, previewVertices, true);
 
-	hoverVertices = randomFromArray(blockSelection, previewVertices);
-	hoverPreview = CreateSensor(0, 0, 0, hoverVertices, false);
+		hoverVertices = randomFromArray(blockSelection, previewVertices);
+		hoverPreview = CreateSensor(0, 0, 0, hoverVertices, false);
 
-	str1 = "";
-	str2 = "Level "+(curLevel+1)+"/"+levels.length;
+		str1 = "";
+		str2 = "Level "+(curLevel)+"/"+(levels.length-1);
+	} else {
+		str1 = "Celestial Lighthouse";
+		str2 = "Click a level to play!";
+	}
 
 	tRotateHoveredBlock.off();
 	tBlockPlacementCooldown.off();
@@ -540,7 +607,12 @@ function Unload() {
 	solidPlats.length = 0;
 }
 
+function Exit() {
+	Load(0);
+}
+
 function Load(nr) {
+	Unload();
 	nr = Common.clamp(nr, 0, levels.length-1)
 
 	curLevel = nr;

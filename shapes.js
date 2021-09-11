@@ -54,6 +54,25 @@ var levels = [];
 //nr of blocks, core radius, atmosphere radius, [] with available random blocks, array of preset solid objects:
 //[x, y, sides (- = half), radius, rotation in deg (-1 = auto), scaleX, scaleY]
 
+levels.push([ //LEVEL SELECT
+	10, 50, 450, shapes, [
+		[100, 100, 50, 50, 180, 1, 1, 0.001],
+		[-100, 100, 50, 50, 180, 1, 1, 0.001],
+		[-100, -100, 50, 50, 180, 1, 1, 0.001],
+		[100, -100, 50, 50, 180, 1, 1, 0.001],
+
+		[200, 200, 50, 50, 180, 1, 1, -0.0005],
+		[-200, 200, 50, 50, 180, 1, 1, -0.0005],
+		[-200, -200, 50, 50, 180, 1, 1, -0.0005],
+		[200, -200, 50, 50, 180, 1, 1, -0.0005],
+
+		[300, 300, 50, 50, 180, 1, 1, 0.00025],
+		[-300, 300, 50, 50, 180, 1, 1, 0.00025],
+		[-300, -300, 50, 50, 180, 1, 1, 0.00025],
+		[300, -300, 50, 50, 180, 1, 1, 0.00025]
+	]
+])
+
 levels.push([ //Tutorial
 	10, 10, 250, shapes, [
 		[0, 0, 100, 50, 180, 1, 1]
@@ -167,4 +186,4 @@ levels.push([ //Intro rotation level
 	]
 ])
 
-var curLevel = 11;
+var curLevel = 0;
