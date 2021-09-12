@@ -32,6 +32,14 @@ var engine = Engine.create();
 var canvas = document.getElementById("gameCanvas");
 var context = canvas.getContext("2d");
 
+var hiScore = []; //[10, 10, 20, 30, 40, 10, 20, 30, 0, 0, 0, 0];
+
+for (var i=1; i != levels.length; i++) {
+	hiScore.push(-1);
+}
+
+loadSave();
+
 var render = Render.create({
 	canvas:  canvas,
 	engine: engine,
@@ -108,6 +116,19 @@ for (var i = 0; i != 100; i++) {
 	Composite.add(world, bod);
 	stars.push(bod);
 }
+
+var exitButton = Bodies.polygon(0, 0, 50, 35, {
+	isSensor: true,
+	isStatic: true,
+	render: {
+		visible: true,
+		fillStyle: "#b00"
+	}
+})
+
+var exitHover = false;
+
+Composite.add(world, exitButton);
 
 Load(curLevel);
 
@@ -204,6 +225,9 @@ function run() {
 			if (hoveredBodies.length >= 1) {
 				var assumedLvl = -1;
 				for(var i = 0; i != solidPlats.length; i++) {
+
+					if (i >= UnlockedNr()) {break;}
+
 					if (solidPlats[i] == hoveredBodies[0]) {
 						assumedLvl = i;
 						solidPlats[i].render.fillStyle = "#999";
@@ -234,6 +258,24 @@ function run() {
 					solidPlats[i].render.fillStyle = "#14151f";
 				}
 			}
+		} else {
+			var hoveredBodies = Query.point([exitButton], mouse.position);
+
+			if (hoveredBodies[0] == exitButton) {
+				exitButtonHover = true;
+				if (mouse.button == 0) {
+					mouse.button = -1;
+					Exit();
+				}
+				if (hoverPreview) {
+					hoverPreview.render.visible = false;
+				}
+			} else {
+				exitButtonHover = false;
+				if (hoverPreview) {
+					hoverPreview.render.visible = true;
+				}
+			}
 		}
 
 		if (kBrowse.fired) {
@@ -245,9 +287,7 @@ function run() {
 		}
 
 		if (kExit.fired) {
-			console.log("Exit fired")
 			if (curLevel != 0) {
-				console.log("Gonna exit")
 				Exit();
 			}
 		}
@@ -260,6 +300,9 @@ function run() {
 			if (tWinTimer.finishedThisFrame) {
 				mouse.button = 0;
 				state = 1;
+
+				hiScore[curLevel-1] = totalBlocks;
+
 				paused = true;
 				str1 = "You win!";
 				str2 = "Click to continue";
@@ -303,8 +346,16 @@ function run() {
 			Bd.setPosition(previewBlock, previewBlockPos);
 		}
 
+		var exitButtonPos = {x: render.bounds.min.x + 75, y: render.bounds.min.y + 75}
+
+		if (exitButton) {
+			Bd.setPosition(exitButton, exitButtonPos);
+		}
+
 		if (hoverPreview && curLevel != 0) {
-			hoverPreview.render.visible = true;
+			if (!exitButtonHover) {
+				hoverPreview.render.visible = true;
+			}
 
 			var position = mouse.position;
 			if (tNewBlockSpawn.running) {
@@ -441,7 +492,7 @@ function run() {
 		//Engine.update(engine, 1000 / 60);
 	} else {
 		if (mouse.button == -1) {
-			Load(curLevel+1); //QQQ Game finished?
+			Exit();
 		}
 	}
 
@@ -455,27 +506,49 @@ function run() {
 	var w = window.innerWidth * .5 * zoom;
 	var h = window.innerHeight * 0.5 * zoom;
 
-	context.font="small-caps bold 40px monospace";
+	var fBig = "small-caps bold 40px monospace";
+	var fMid = "small-caps bold 32px monospace";
+	var fTiny = "small-caps bold 24px monospace";
+
+	context.font=fBig;
 	outline(str1, 0, h - 60);
 
 	if (curLevel == 0) {
 
 		for(var i = 0; i != solidPlats.length; i++) {
 			var plat = solidPlats[i];
+
+			if (i >= UnlockedNr()) {break;}
+
 			if (plat.render.visible) {
+				context.font=fBig;
 				context.fillStyle = (i == hoveredLvl) ? "#fff" : "#666";
 				outline(i+1, plat.position.x, plat.position.y + 10);
+
+				if (hiScore[i] != 0) {
+					context.font=fTiny;
+					var txt = "NEW!";
+					if (hiScore[i] > 0) {txt = hiScore[i]+"p"}
+					outline(txt, plat.position.x, plat.position.y + 35);
+				}
 			}
+		}
+	} else {
+		if (exitButton.render.visible) {
+			context.fillStyle = exitButtonHover ? "#d00" : "#666";
+			outline("↩", exitButton.position.x, exitButton.position.y + 5);
+			context.font=fTiny;
+			outline("Exit", exitButton.position.x, exitButton.position.y + 25);
 		}
 	}
 
 	context.fillStyle = "#fff";
-	context.font="small-caps bold 32px monospace";
+	context.font=fMid;
 	outline(str2, 0, h - 25);
 
 	if (state == 0 && curLevel != 0) {
 		var str = blocksLeft + " left";
-		context.font="small-caps bold 24px monospace";
+		context.font=fTiny;
 		outline(str, w - 75, -h + 150);
 	}
 };
@@ -502,6 +575,10 @@ function resize() {
 
 		if (w < 750 || h < 750) {
 			zoom = 1.5;
+
+			if (w < 600 || h < 600) {
+				zoom = 1.75;
+			}
 		}
 	}
 
@@ -589,8 +666,19 @@ function Restart() {
 		hoverVertices = randomFromArray(blockSelection, previewVertices);
 		hoverPreview = CreateSensor(0, 0, 0, hoverVertices, false);
 
-		str1 = "";
 		str2 = "Level "+(curLevel)+"/"+(levels.length-1);
+
+		if (curLevel == 1) {
+			str1 = "Click to place blocks. Place them all!"
+		} else if (curLevel == 2) {
+			str1 = "Don't let blocks fall into planet core!"
+		 } 
+		else if (curLevel == 3) {
+			str1 = "Mouse Wheel/Arrow Keys to rotate block."
+		} else
+		{
+			str1 = "";
+		}
 	} else {
 		str1 = "Celestial Lighthouse";
 		str2 = "Click a level to play!";
@@ -603,6 +691,8 @@ function Restart() {
 	tWinTimer.off();
 
 	audio(sfx.RESTART);
+
+	save();
 }
 
 function Unload() {
@@ -623,6 +713,10 @@ function Load(nr) {
 	Unload();
 	nr = Common.clamp(nr, 0, levels.length-1)
 
+	if (hiScore[nr-1] == -1) {
+		hiScore[nr-1] = 0;
+	}
+
 	curLevel = nr;
 	var lvlData = levels[nr];
 
@@ -633,6 +727,8 @@ function Load(nr) {
 	if (atmosphere) {
 		Composite.removeBody(world, atmosphere);
 	}
+
+	exitButton.render.visible = (nr != 0);
 
 	totalBlocks = lvlData[0];
 	blockSelection = lvlData[3];
@@ -716,6 +812,40 @@ function RotateBlock(rotateDelta) {
 	//console.log("Rotation fired: " + prevRotation + " " + rotateAppend);
 
 	audio(Math.sign(rotateDelta) == 1 ? sfx.TURNCW : sfx.TURNCCW);
+}
+
+function UnlockedNr() {
+	var unplayed = 4;
+	for (var i = 0; i != levels.length; i++) {
+		if (hiScore[i] <= 0) {
+			unplayed--;
+
+			if (unplayed < 0) {break;}
+		}
+	}
+
+	return i;
+}
+
+function save() {
+	var ls = window.localStorage;
+
+	var str = JSON.stringify(hiScore);
+
+	ls.setItem("cl-hiscore",str);
+}
+
+function loadSave() {
+	var ls = window.localStorage;
+
+	var loadedValue = ls.getItem("cl-hiscore");
+
+	if (loadedValue != "null") {
+		var parsedValue = JSON.parse(loadedValue);
+		if (parsedValue) {
+			hiScore = JSON.parse(loadedValue);
+		}
+	}
 }
 
 function audio(soundID) {
