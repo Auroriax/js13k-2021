@@ -95,7 +95,7 @@ resize();
 //Scatter stars
 var stars = [];
 const RANGE = 1000;
-for (var i = 0; i != 100; i++) {
+for (var j = 0; j != 100; j++) {
 	var bod = Bodies.polygon(
 		-RANGE + Math.random() * RANGE * 2,
 		-RANGE + Math.random() * RANGE * 2,
