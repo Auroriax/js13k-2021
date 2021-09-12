@@ -25,12 +25,15 @@ var kRotate = new InputHandler(["ArrowLeft", "KeyA", "KeyZ", "KeyQ"], ["ArrowRig
 var kReset = new InputHandler(["KeyR"], [], Infinity);
 var kExit = new InputHandler(["Escape"], [], Infinity);
 
-var kBrowse = new InputHandler(["KeyN"], ["KeyB"], Infinity);
+var kBrowse = new InputHandler(["F8"], ["F7"], Infinity);
 
 var engine = Engine.create();
 
-var canvas = document.getElementById("gameCanvas");
+var canvas = document.getElementById("gc");
 var context = canvas.getContext("2d");
+
+var cSolid = "#14151f";
+var cTrans = "#00000000";
 
 var hiScore = []; //[10, 10, 20, 30, 40, 10, 20, 30, 0, 0, 0, 0];
 
@@ -48,14 +51,12 @@ var render = Render.create({
 		height: canvas.clientHeight,
 		wireframes: false,
 		hasBounds: true,
-		background: "#333333",
+		background: "#333",
 	}
 });
 
-var zoomLevel = 1;
-
-var str1 = "Celestial Lighthouse";
-var str2 = "by Tom Hermans for js13k 2021, built using Matter.js";
+var str1 = "";
+var str2 = "";
 
 var world = engine.world;
 
@@ -105,7 +106,7 @@ for (var j = 0; j != 100; j++) {
 			isSensor: true,
 			isStatic: true,
 			render: {
-				strokeStyle: "#dddddd",
+				strokeStyle: "#ddd",
 				fillStyle: "#33333344",
 				lineWidth: 1
 			}
@@ -113,9 +114,8 @@ for (var j = 0; j != 100; j++) {
 	);
 
 	bod.collisionFilter.group = 1;
-	//Bd.setDensity(bod, 0.05);
 
-	Composite.add(world, bod);
+	Composite.addBody(world, bod);
 	stars.push(bod);
 }
 
@@ -130,7 +130,7 @@ var exitButton = Bodies.polygon(0, 0, 50, 35, {
 
 var exitHover = false;
 
-Composite.add(world, exitButton);
+Composite.addBody(world, exitButton);
 
 Load(curLevel);
 
@@ -142,7 +142,7 @@ function CreateSensor(x, y, ang, vertices, preview) {
 	bod.isSensor = true;
 	bod.isStatic = true;
 
-	bod.render.strokeStyle = "#dddddd";
+	bod.render.strokeStyle = "#ddd";
 	bod.render.fillStyle = "#33333388";
 
 	if (preview) {
@@ -151,7 +151,7 @@ function CreateSensor(x, y, ang, vertices, preview) {
 
 	bod.render.lineWidth = 5;
 
-	Composite.add(world, bod);
+	Composite.addBody(world, bod);
 
 	return bod;
 }
@@ -166,12 +166,12 @@ function CreateBlock(x, y, ang, vertexArray) {
 
 	bod.slop = 0.1;
 
-	bod.render.fillStyle = "#dddddd";
-	bod.render.strokeStyle = "#333333";
+	bod.render.fillStyle = "#ddd";
+	bod.render.strokeStyle = "#333";
 	bod.render.lineWidth = 1; 
 
 	placedBlocks.push(bod);
-	Composite.add(world, bod);
+	Composite.addBody(world, bod);
 }
 
 //UPDATE
@@ -235,7 +235,7 @@ function run() {
 						solidPlats[i].render.fillStyle = "#999";
 	
 					} else {
-						solidPlats[i].render.fillStyle = "#14151f";
+						solidPlats[i].render.fillStyle = cSolid;
 					}
 				}
 
@@ -250,14 +250,14 @@ function run() {
 					hoveredLvl = -1;
 
 					for(var i = 0; i != solidPlats.length; i++) {
-						solidPlats[i].render.fillStyle = "#14151f";
+						solidPlats[i].render.fillStyle = cSolid;
 					}
 				}
 			} else {
 				hoveredLvl = -1;
 
 				for(var i = 0; i != solidPlats.length; i++) {
-					solidPlats[i].render.fillStyle = "#14151f";
+					solidPlats[i].render.fillStyle = cSolid;
 				}
 			}
 		} else {
@@ -267,7 +267,6 @@ function run() {
 				exitButtonHover = true;
 				if (mouse.button == 0) {
 					mouse.button = -1;
-					//QQQ
 					Exit();
 				}
 				if (hoverPreview) {
@@ -313,7 +312,7 @@ function run() {
 
 				for (var i = 0; i != placedBlocks.length; i++) {
 					placedBlocks[i].render.strokeStyle = placedBlocks[i].render.fillStyle;
-					placedBlocks[i].render.fillStyle = "#00000000";
+					placedBlocks[i].render.fillStyle = cTrans;
 					placedBlocks[i].lineWidth = 4;
 				}
 			} else {
@@ -394,19 +393,18 @@ function run() {
 				}
 			}
 	
-			hoverPreview.render.strokeStyle = colliding ? "#dd0000" : "#dddddd";
+			hoverPreview.render.strokeStyle = colliding ? "#d00" : "#ddd";
 
 			if (!tNewBlockSpawn.running && mouse.button == 0 && !mouseDown && state == 0) {
 				mouseDown = true;
 	
 				if (!colliding) {
 					CreateBlock(hoverPreview.position.x, hoverPreview.position.y, hoverPreview.angle, hoverVertices);
-					Composite.remove(world, hoverPreview);
+					Composite.removeBody(world, hoverPreview);
 					hoverPreview = null;
 					tBlockPlacementCooldown.start();
 					if (blocksLeft <= 0) {
 						str1 = "Stability: 0%";
-						str2 = "Stay steady...";
 					}
 					audio(sfx.PLACE);
 				} else {
@@ -529,10 +527,12 @@ function run() {
 	var w = window.innerWidth * .5 * zoom;
 	var h = window.innerHeight * 0.5 * zoom;
 
-	var fBig = "small-caps bold 40px monospace";
-	var fMid = "small-caps bold 32px monospace";
-	var fTiny = "small-caps bold 24px monospace";
-	var fMini = "small-caps bold 18px monospace";
+	var pre = "small-caps bold ";
+	var suf = "px monospace";
+	var fBig = pre+40+suf;
+	var fMid = pre+32+suf;
+	var fTiny = pre+24+suf;
+	var fMini = pre+18+suf;
 
 	context.font=fBig;
 	outline(str1, 0, h - 60);
@@ -787,6 +787,11 @@ function Load(nr) {
 		isStatic: true,
 		isSensor: true,
 
+		render: {
+			fillStyle: "#CD0E0E",
+			visible: false
+		},
+
 		// example of an attractor function that 
 		// returns a force vector that applies to bodyB
 		plugin: {
@@ -802,9 +807,7 @@ function Load(nr) {
 	}, false
 	);
 
-	planet.render.fillStyle = "#CD0E0E";
-	planet.render.visible = false;
-	Composite.add(world, planet);
+	Composite.addBody(world, planet);
 
 	atmosphere = Bodies.polygon(
 		0,
@@ -815,7 +818,7 @@ function Load(nr) {
 		isStatic: true,
 		isSensor: true,
 		render: {
-			fillStyle: "#00000000",
+			fillStyle: cTrans,
 			strokeStyle: gradient,
 			lineWidth: 3,
 			opacity: 0.3,
@@ -824,7 +827,7 @@ function Load(nr) {
 	}, false
 	);
 	
-	Composite.add(world, atmosphere);
+	Composite.addBody(world, atmosphere);
 
 	for(var i = 0; i != lvlData[4].length; i++) {
 		var sld = lvlData[4][i];
@@ -842,7 +845,7 @@ function Load(nr) {
 
 		plat.autorot = sld[7];
 		
-		Composite.add(world, plat);
+		Composite.addBody(world, plat);
 		solidPlats.push(plat);
 	}
 

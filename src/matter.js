@@ -176,25 +176,6 @@ Bounds.overlaps = function (boundsA, boundsB) {
         boundsA.max.y >= boundsB.min.y && boundsA.min.y <= boundsB.max.y);
 };
 
-
-Bounds.translate = function (bounds, vector) {
-    bounds.min.x += vector.x;
-    bounds.max.x += vector.x;
-    bounds.min.y += vector.y;
-    bounds.max.y += vector.y;
-};
-
-
-Bounds.shift = function (bounds, position) {
-    var deltaX = bounds.max.x - bounds.min.x,
-        deltaY = bounds.max.y - bounds.min.y;
-
-    bounds.min.x = position.x;
-    bounds.max.x = position.x + deltaX;
-    bounds.min.y = position.y;
-    bounds.max.y = position.y + deltaY;
-};
-
 var Vector = {};
 
 
@@ -216,22 +197,6 @@ Vector.clone = function (vector) {
 
 Vector.magnitude = function (vector) {
     return Math.sqrt((vector.x * vector.x) + (vector.y * vector.y));
-};
-
-
-Vector.magnitudeSquared = function (vector) {
-    return (vector.x * vector.x) + (vector.y * vector.y);
-};
-
-
-Vector.rotate = function (vector, angle, output) {
-    var cos = Math.cos(angle),
-        sin = Math.sin(angle);
-    if (!output) output = {};
-    var x = vector.x * cos - vector.y * sin;
-    output.y = vector.x * sin + vector.y * cos;
-    output.x = x;
-    return output;
 };
 
 Vector.rotateAbout = function (vector, angle, point, output) {
@@ -267,12 +232,6 @@ Vector.dot = function (vectorA, vectorB) {
 Vector.cross = function (vectorA, vectorB) {
     return (vectorA.x * vectorB.y) - (vectorA.y * vectorB.x);
 };
-
-
-Vector.cross3 = function (vectorA, vectorB, vectorC) {
-    return (vectorB.x - vectorA.x) * (vectorC.y - vectorA.y) - (vectorB.y - vectorA.y) * (vectorC.x - vectorA.x);
-};
-
 
 Vector.add = function (vectorA, vectorB, output) {
     if (!output) output = {};
@@ -392,22 +351,6 @@ Vertices.centre = function (vertices) {
     return Vector.div(centre, 6 * area);
 };
 
-
-Vertices.mean = function (vertices) {
-    var average = {
-        x: 0,
-        y: 0
-    };
-
-    for (var i = 0; i < vertices.length; i++) {
-        average.x += vertices[i].x;
-        average.y += vertices[i].y;
-    }
-
-    return Vector.div(average, vertices.length);
-};
-
-
 Vertices.area = function (vertices, signed) {
     var area = 0,
         j = vertices.length - 1;
@@ -512,16 +455,6 @@ Vertices.scale = function (vertices, scaleX, scaleY, point) {
     return vertices;
 };
 
-Vertices.clockwiseSort = function (vertices) {
-    var centre = Vertices.mean(vertices);
-
-    vertices.sort(function (vertexA, vertexB) {
-        return Vector.angle(centre, vertexA) - Vector.angle(centre, vertexB);
-    });
-
-    return vertices;
-};
-
 var Composite = {};
 
 Composite.create = function () {
@@ -548,36 +481,6 @@ Composite.setModified = function (composite, isModified, updateParents, updateCh
             Composite.setModified(childComposite, isModified, updateParents, updateChildren);
         }
     }
-};
-
-
-Composite.add = function (composite, object) {
-    var objects = [].concat(object);
-
-    for (var i = 0; i < objects.length; i++) {
-        var obj = objects[i];
-
-        if (obj.parent !== obj) {
-            break;
-        }
-
-        Composite.addBody(composite, obj);
-    }
-
-    return composite;
-};
-
-
-Composite.remove = function (composite, object) {
-    var objects = [].concat(object);
-
-    for (var i = 0; i < objects.length; i++) {
-        var obj = objects[i];
-
-        Composite.removeBody(composite, obj);
-    }
-
-    return composite;
 };
 
 Composite.addBody = function (composite, body) {
@@ -625,7 +528,7 @@ Bd.create = function (options) {
         parts: [],
         plugin: {},
         angle: 0,
-        vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40 L 0 40', null),
+        vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40', null),
         position: {
             x: 0,
             y: 0
@@ -672,7 +575,6 @@ Bd.create = function (options) {
         },
         bounds: null,
         autorot: 0,
-        circleRadius: 0,
         positionPrev: null,
         anglePrev: 0,
         parent: null,
@@ -795,12 +697,6 @@ Bd.setMass = function (body, mass) {
     body.mass = mass;
     body.inverseMass = 1 / body.mass;
     body.density = body.mass / body.area;
-};
-
-
-Bd.setDensity = function (body, density) {
-    Bd.setMass(body, density * body.area);
-    body.density = density;
 };
 
 
@@ -958,16 +854,6 @@ Bd.scale = function (body, scaleX, scaleY) {
         if (!body.isStatic) {
             Bd.setMass(body, body.density * totalArea);
             Bd.setInertia(body, totalInertia);
-        }
-    }
-
-
-    if (body.circleRadius) {
-        if (scaleX === scaleY) {
-            body.circleRadius *= scaleX;
-        } else {
-
-            body.circleRadius = null;
         }
     }
 };
@@ -1205,7 +1091,7 @@ Bodies.fromVertices = function (x, y, vertexSets) {
     for (v = 0; v < vertexSets.length; v += 1) {
         vertices = vertexSets[v];
 
-        vertices = Vertices.clockwiseSort(vertices);
+        //vertices = Vertices.clockwiseSort(vertices);
 
         parts.push({
             position: {
