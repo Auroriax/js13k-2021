@@ -87,6 +87,8 @@ var blocksLeft = 3;
 var state = 0; //0 = normal, 1 = won, -1 = lost.
 var visCount = 999;
 var hoveredLvl = 0;
+var endlessMode = false;
+var exitButtonHover = false;
 
 resize();
 
@@ -265,6 +267,7 @@ function run() {
 				exitButtonHover = true;
 				if (mouse.button == 0) {
 					mouse.button = -1;
+					//QQQ
 					Exit();
 				}
 				if (hoverPreview) {
@@ -344,12 +347,6 @@ function run() {
 
 		if (previewBlock) {
 			Bd.setPosition(previewBlock, previewBlockPos);
-		}
-
-		var exitButtonPos = {x: render.bounds.min.x + 75, y: render.bounds.min.y + 75}
-
-		if (exitButton) {
-			Bd.setPosition(exitButton, exitButtonPos);
 		}
 
 		if (hoverPreview && curLevel != 0) {
@@ -433,7 +430,9 @@ function run() {
 				hoverPreview = previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, hoverVertices, true);
 				hoverPreview.render.opacity = 0;
 
-				blocksLeft--;
+				if (!endlessMode) {
+					blocksLeft--;
+				}
 
 				if (blocksLeft >= 1) {
 					previewVertices = randomFromArray(blockSelection, hoverPreview);
@@ -459,11 +458,27 @@ function run() {
 					//console.log(placedBlocks);
 
 						str1 = "Oops!";
-						str2 = "Block fell into core of planet.";
+
+						if (!endlessMode) {
+							str2 = "Block fell into core of planet.";
+							tRestartTimer.start();
+						} else {
+							if (placedBlocks.length > hiScore[curLevel-1]) {
+								hiScore[curLevel-1] = placedBlocks.length;
+								str1 = "NEW RECORD of "+placedBlocks.length+"!";
+							} else {
+								str1 += " Blocks placed: "+placedBlocks.length;
+							}
+							str2 = "Click to retry";
+							paused = true;
+						}
 
 						placedBlocks[i].render.fillStyle = "#888";
 
 						state = -1;
+						mouse.button = 0;
+
+						exitButton.render.visible = false;
 
 						if (previewBlock) {
 							Composite.removeBody(world, previewBlock);
@@ -476,8 +491,6 @@ function run() {
 						tRotateHoveredBlock.off();
 						tBlockPlacementCooldown.off();
 						tNewBlockSpawn.off();
-
-						tRestartTimer.start();
 
 						audio(sfx.LOSE);
 
@@ -492,8 +505,18 @@ function run() {
 		//Engine.update(engine, 1000 / 60);
 	} else {
 		if (mouse.button == -1) {
-			Exit();
+			if (endlessMode) {
+				Restart()
+			} else {
+				Exit();
+			}
 		}
+	}
+
+	var exitButtonPos = {x: render.bounds.min.x + 75, y: render.bounds.min.y + 75}
+
+	if (exitButton) {
+		Bd.setPosition(exitButton, exitButtonPos);
 	}
 
 	Render.world(render);
@@ -509,6 +532,7 @@ function run() {
 	var fBig = "small-caps bold 40px monospace";
 	var fMid = "small-caps bold 32px monospace";
 	var fTiny = "small-caps bold 24px monospace";
+	var fMini = "small-caps bold 18px monospace";
 
 	context.font=fBig;
 	outline(str1, 0, h - 60);
@@ -548,8 +572,16 @@ function run() {
 
 	if (state == 0 && curLevel != 0) {
 		var str = blocksLeft + " left";
+		if (blocksLeft == 0) {str = "Last one!"}
+		if (endlessMode) {str = placedBlocks.length + " placed"}
 		context.font=fTiny;
 		outline(str, w - 75, -h + 150);
+	} else if (curLevel == 0) {
+		context.font=fMini;
+		context.textAlign = "left";
+		outline("Game by Tom Hermans for JS13K 2021", -w + 25, -h + 40);
+		outline("MatterJS © Liam Brummitt & contributors", -w + 25, -h + 60);
+		outline("ZZFX © Frank Force", -w + 25, -h + 80);
 	}
 };
 
@@ -668,7 +700,11 @@ function Restart() {
 
 		str2 = "Level "+(curLevel)+"/"+(levels.length-1);
 
-		if (curLevel == 1) {
+		if (endlessMode) {
+			str1 = "Hi: "+hiScore[curLevel-1];
+			str2 += " - Endless Mode"
+		}
+		else if (curLevel == 1) {
 			str1 = "Click to place blocks. Place them all!"
 		} else if (curLevel == 2) {
 			str1 = "Don't let blocks fall into planet core!"
@@ -706,6 +742,10 @@ function Unload() {
 }
 
 function Exit() {
+	if (placedBlocks.length > hiScore[curLevel-1]) {
+		hiScore[curLevel-1] = placedBlocks.length;
+	}
+
 	Load(0);
 }
 
@@ -713,8 +753,12 @@ function Load(nr) {
 	Unload();
 	nr = Common.clamp(nr, 0, levels.length-1)
 
+	endlessMode = false;
+
 	if (hiScore[nr-1] == -1) {
 		hiScore[nr-1] = 0;
+	} else if (hiScore[nr-1] > 0) {
+		endlessMode = true;
 	}
 
 	curLevel = nr;

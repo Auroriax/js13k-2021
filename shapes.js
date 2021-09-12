@@ -80,13 +80,13 @@ levels.push([ //Tutorial
 ])
 
 levels.push([ //Simple lava intro level
-	12, 100, 450, shapes, [
+	15, 100, 450, shapes, [
 		[0, -60, -100, 50, 180, 2.5, 2.5],
 	]
 ])
 
 levels.push([ //Good early level/incubator
-	15, 180, 450, shapes, [
+	18, 180, 450, shapes, [
 		[0, 0, 100, 50, 0, 2, 2],
 		[0, -140, 4, 50, 0, 2, 5],
 		[-20, -100, 4, 50, 135, 3, 4],
