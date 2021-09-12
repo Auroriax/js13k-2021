@@ -9,26 +9,26 @@ var sBlock = [
 
 var sTrapezium = [
 	{x: 0, y: -25},
-	{x: 50, y: -25},
-	{x: 20, y: 25},
-	{x: -20, y: 25},
 	{x: -50, y: -25},
+	{x: -20, y: 25},
+	{x: 20, y: 25},
+	{x: 50, y: -25},
 ]
 
 var sParalellogramL = [
 	{x: 0, y: -25},
-	{x: 20, y: -25},
-	{x: 50, y: 25},
-	{x: -20, y: 25},
-	{x: -50, y: -25},
+	{x: -20, y: -25},
+	{x: -50, y: 25},
+	{x: 20, y: 25},
+	{x: 50, y: -25},
 ]
 
 var sParalellogramR = [
 	{x: 0, y: -25},
-	{x: 50, y: -25},
-	{x: 20, y: 25},
-	{x: -50, y: 25},
-	{x: -20, y: -25},
+	{x: -50, y: -25},
+	{x: -20, y: 25},
+	{x: 50, y: 25},
+	{x: 20, y: -25},
 ]
 
 var sLongBlock = [
@@ -40,8 +40,8 @@ var sLongBlock = [
 
 var sEquiTriangle = [
 	{x: 0, y: 40},
-	{x: 34.6, y: -20},
-	{x: -34.6, y: -20}
+	{x: -34.6, y: -20},
+	{x: 34.6, y: -20}
 ]
 
 var simpleShapes = [sBlock, sLongBlock, sTrapezium]
@@ -119,14 +119,14 @@ levels.push([//Pole hopping
 ])
 
 levels.push([//Pulsar Plus
-	12, 190, 450, shapes, [
+	12, 190, 450, simpleShapes, [
 		[0, 0, 50, 50, 0, 2.75, 5],
 		[0, 0, 50, 50, 90, 2.5, 5],
 	]
 ])
 
 levels.push([//Excavated Site
-	10, 175, 450, shapes, [
+	12, 175, 450, shapes, [
 		[150, 150, -100, 50, 315, 9, 9],
 		[-150, 150, -100, 50, 45, 9, 9],
 		[-70, -40, 4, 50, 135, 1.5, 7],
@@ -147,7 +147,7 @@ levels.push([ //Hexagon Solar System
 ])
 
 levels.push([ //Intro rotation level
-	10, 100, 450, shapes, [
+	12, 100, 450, shapes, [
 		[0, -60, 4, 50, 0, 3.4, 1.5, 0.001],
 		[120, -170, 4, 50, 10, 1, 4.8, 0.001],
 		[-120, -170, 4, 50, -10, 1, 4.8, 0.001]
@@ -155,7 +155,7 @@ levels.push([ //Intro rotation level
 ])
 
 levels.push([ //Window Wiper
-	12, 100, 450, shapes, [
+	15, 100, 450, shapes, [
 		[0, -400, 4, 50, 180, 1, 4, 0.01],
 		[0, 400, 4, 50, 180, 1, 4, 0.01],
 		[50, 50, -100, 50, 315, 2.5, 2.5],
@@ -164,7 +164,7 @@ levels.push([ //Window Wiper
 ])
 
 levels.push([ //Spike rotation level
-	12, 80, 450, bigShapes, [
+	15, 80, 450, bigShapes, [
 		[0, 98, 3, 50, 90, -4, 1, -0.001],
 		[98, 0, 3, 50, 180, 4, 1, -0.001],
 		[0, -98, 3, 50, 270, -4, 1, -0.001],

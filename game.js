@@ -32,8 +32,15 @@ var engine = Engine.create();
 var canvas = document.getElementById("gc");
 var context = canvas.getContext("2d");
 
-var cSolid = "#14151f";
-var cTrans = "#00000000";
+const cSolid = "#14151f";
+const cTrans = "#00000000";
+
+const pre = "small-caps bold ";
+const suf = "px monospace";
+const fBig = pre+40+suf;
+const fMid = pre+32+suf;
+const fTiny = pre+24+suf;
+const fMini = pre+18+suf;
 
 var hiScore = []; //[10, 10, 20, 30, 40, 10, 20, 30, 0, 0, 0, 0];
 
@@ -136,7 +143,7 @@ Load(curLevel);
 
 mouse.position = {x: 0, y: -1};
 
-function CreateSensor(x, y, ang, vertices, preview) {
+function CreateSensor(x, y, vertices, preview) {
 	var bod = Bodies.fromVertices(x,y,vertices);
 
 	bod.isSensor = true;
@@ -241,8 +248,8 @@ function run() {
 
 				if (assumedLvl != -1) {
 					hoveredLvl = assumedLvl;
-					if (mouse.button == 0) {
-						mouse.button = -1;
+					if (mouse.button == -1) {
+						mouse.button = -2;
 						Load(assumedLvl+1);
 						return;
 					}
@@ -266,7 +273,7 @@ function run() {
 			if (hoveredBodies[0] == exitButton) {
 				exitButtonHover = true;
 				if (mouse.button == 0) {
-					mouse.button = -1;
+					mouse.button = -2;
 					Exit();
 				}
 				if (hoverPreview) {
@@ -282,25 +289,21 @@ function run() {
 
 		if (kBrowse.fired) {
 			Load(curLevel + kBrowse.delta);
-		}
-
-		if (kReset.fired) {
-			Restart();
-		}
-
-		if (kExit.fired) {
+		} else if (kReset.fired) {
+			Restart(true);
+		} else if (kExit.fired) {
 			if (curLevel != 0) {
 				Exit();
 			}
 		}
 
 		if (tRestartTimer.finishedThisFrame && state == -1) {
-			Restart();
+			Restart(true);
 		}
 
 		if (tWinTimer.running && state == 0) {
 			if (tWinTimer.finishedThisFrame) {
-				mouse.button = 0;
+				mouse.button = -2;
 				state = 1;
 
 				hiScore[curLevel-1] = totalBlocks;
@@ -425,7 +428,7 @@ function run() {
 				hoverVertices = previewVertices;
 
 				Composite.removeBody(world, previewBlock);
-				hoverPreview = previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, hoverVertices, true);
+				hoverPreview = previewBlock = CreateSensor(mouse.position.x, mouse.position.y, hoverVertices, true);
 				hoverPreview.render.opacity = 0;
 
 				if (!endlessMode) {
@@ -434,7 +437,7 @@ function run() {
 
 				if (blocksLeft >= 1) {
 					previewVertices = randomFromArray(blockSelection, hoverPreview);
-					previewBlock = CreateSensor(mouse.position.x, mouse.position.y, 180, previewVertices, true);
+					previewBlock = CreateSensor(mouse.position.x, mouse.position.y, previewVertices, true);
 					previewBlock.render.opacity = 0;
 				}
 				hoverAngle = 0;
@@ -474,7 +477,7 @@ function run() {
 						placedBlocks[i].render.fillStyle = "#888";
 
 						state = -1;
-						mouse.button = 0;
+						mouse.button = -2;
 
 						exitButton.render.visible = false;
 
@@ -504,7 +507,7 @@ function run() {
 	} else {
 		if (mouse.button == -1) {
 			if (endlessMode) {
-				Restart()
+				Restart(true)
 			} else {
 				Exit();
 			}
@@ -526,13 +529,6 @@ function run() {
 
 	var w = window.innerWidth * .5 * zoom;
 	var h = window.innerHeight * 0.5 * zoom;
-
-	var pre = "small-caps bold ";
-	var suf = "px monospace";
-	var fBig = pre+40+suf;
-	var fMid = pre+32+suf;
-	var fTiny = pre+24+suf;
-	var fMini = pre+18+suf;
 
 	context.font=fBig;
 	outline(str1, 0, h - 60);
@@ -583,6 +579,9 @@ function run() {
 		outline("MatterJS © Liam Brummitt & contributors", -w + 25, -h + 60);
 		outline("ZZFX © Frank Force", -w + 25, -h + 80);
 	}
+
+	mouse.button = -2;
+	mouseDown = false;
 };
 
 function outline(str, x, y) {
@@ -658,7 +657,7 @@ function EaseInOut(t) {
 	return(t*(2-t));
 }
 
-function Restart() {
+function Restart(hard) {
 	for (var i = 0; i != placedBlocks.length; i++) {
 		Composite.removeBody(world, placedBlocks[i]);
 	}
@@ -693,16 +692,16 @@ function Restart() {
 
 	if (curLevel != 0) {
 		previewVertices = randomFromArray(blockSelection);
-		previewBlock = CreateSensor(0, 0, 180, previewVertices, true);
+		previewBlock = CreateSensor(0, 0, previewVertices, true);
 
 		hoverVertices = randomFromArray(blockSelection, previewVertices);
-		hoverPreview = CreateSensor(0, 0, 0, hoverVertices, false);
+		hoverPreview = CreateSensor(0, 0, hoverVertices, false);
 
 		str2 = "Level "+(curLevel)+"/"+(levels.length-1);
 
 		if (endlessMode) {
-			str1 = "Hi: "+hiScore[curLevel-1];
-			str2 += " - Endless Mode"
+			str1 = "Par: "+(blocksLeft+1)+" • Hi: "+hiScore[curLevel-1];
+			str2 += " • Endless Mode"
 		}
 		else if (curLevel == 1) {
 			str1 = "Click to place blocks. Place them all!"
@@ -715,6 +714,8 @@ function Restart() {
 		{
 			str1 = "";
 		}
+
+		exitButton.render.visible = true;
 	} else {
 		str1 = "Celestial Lighthouse";
 		str2 = "Click a level to play!";
@@ -726,13 +727,18 @@ function Restart() {
 	tRestartTimer.off();
 	tWinTimer.off();
 
-	audio(sfx.RESTART);
+	mouseDown = false;
+	mouse.button = -2;
+
+	if (hard) {
+		audio(sfx.RESTART);
+	}
 
 	save();
 }
 
 function Unload() {
-	Restart();
+	Restart(false);
 
 	for (var i = 0; i != solidPlats.length; i++) {
 		Composite.removeBody(world, solidPlats[i]);
@@ -742,7 +748,7 @@ function Unload() {
 }
 
 function Exit() {
-	if (placedBlocks.length > hiScore[curLevel-1]) {
+	if (endlessMode && placedBlocks.length > hiScore[curLevel-1]) {
 		hiScore[curLevel-1] = placedBlocks.length;
 	}
 
@@ -834,22 +840,22 @@ function Load(nr) {
 		var plat = Bodies.polygon(
 			sld[0], sld[1], Math.abs(sld[2]), sld[3], {
 				isStatic: true,
-				friction: 0.8
+				friction: 0.8,
+				autorot: sld[7],
+				render: {
+					visible: false
+				}
 			}, sld[2] < 0
 		)
-
-		plat.render.visible = false;
 		
 		Bd.scale(plat, sld[5], sld[6]);
 		Bd.setAngle(plat, sld[4] * (Math.PI/180))
-
-		plat.autorot = sld[7];
 		
 		Composite.addBody(world, plat);
 		solidPlats.push(plat);
 	}
 
-	Restart();
+	Restart(true);
 }
 
 function RotateBlock(rotateDelta) {
@@ -887,7 +893,7 @@ function loadSave() {
 
 	var loadedValue = ls.getItem("cl-hiscore");
 
-	if (loadedValue != "null") {
+	if (loadedValue && loadedValue != "null") {
 		var parsedValue = JSON.parse(loadedValue);
 		if (parsedValue) {
 			hiScore = JSON.parse(loadedValue);
@@ -903,13 +909,13 @@ function audio(soundID) {
 	if (true) {
 		switch (soundID) {
 			case sfx.RESTART:
-					zzfx(...[0.8,,542,.12,.16,.01,1,1.65,27,,88,.06,,.9,,,.33]); // Random 2
+					zzfx(...[0.5,,542,.12,.16,.01,1,1.65,27,,88,.06,,.9,,,.33]); // Random 2
 					break;
 			case sfx.PLACE: 
-					zzfx(...[1.01,,466,,.05,.02,2,.89,62,31,,,.05,,-80,.6]);
+					zzfx(...[0.8,,466,,.05,.02,2,.89,62,31,,,.05,,-80,.6]);
 					break;
 			case sfx.NEWBLOCK:
-					zzfx(...[1.03,.15,359,,.07,.2,1,.65,,,,,.03,,.7,,,.51,.09,.11]); // Pickup 69
+					zzfx(...[0.8,.15,359,,.07,.2,1,.65,,,,,.03,,.7,,,.51,.09,.11]); // Pickup 69
 					//zzfx(...[1.4,,1974,,.08,.24,,1.44,,,333,.08,,,7.8,,.04,.83]); // Pickup 7
 					//zzfx(...[1.4,,1974,,.08,.24,,1.44,,,333,.08,,,7.8,,.04,.83]); // Pickup 7
 					break;
