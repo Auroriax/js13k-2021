@@ -690,7 +690,7 @@ function Restart(hard) {
 		Composite.removeBody(world, hoverPreview);
 	}
 
-	if (curLevel != 0) {
+	if (curLevel != 0 && blockSelection != null) {
 		previewVertices = randomFromArray(blockSelection);
 		previewBlock = CreateSensor(0, 0, previewVertices, true);
 
